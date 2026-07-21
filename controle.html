@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Télécommande — Claynor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700&family=Rajdhani:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root{ --cyan:#2de2e6; --cyan-deep:#0fa3b1; --gold:#f5c542; --gold-deep:#c8951f; --ink:#eaf6f7; --ink-dim:#7a8a8f; --line:rgba(45,226,230,.28); }
+  *{ margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body{ height:100%; }
+  body{ font-family:'Rajdhani',sans-serif; color:var(--ink); background:radial-gradient(130% 120% at 30% -5%, #101d24 0%, #0a1015 48%, #05090c 100%); min-height:100vh; padding:18px 16px 30px; }
+  .wrap{ max-width:460px; margin:0 auto; }
+  .top{ display:flex; align-items:center; gap:9px; font-family:'Chakra Petch'; font-weight:700; font-size:11px; letter-spacing:.28em; color:var(--ink-dim); text-transform:uppercase; margin-bottom:18px; }
+  .dot{ width:9px; height:9px; border-radius:50%; background:#ff5d5d; box-shadow:0 0 10px #ff5d5d; }
+  .title{ font-family:'Chakra Petch'; font-weight:700; font-size:13px; letter-spacing:.24em; color:var(--cyan); text-transform:uppercase; }
+  .card{ background:linear-gradient(105deg, rgba(11,17,21,.92), rgba(9,14,18,.82)); border:1px solid var(--line); border-radius:14px; padding:20px; margin-bottom:16px; }
+  .game{ font-family:'Chakra Petch'; font-weight:700; font-size:24px; letter-spacing:.04em; text-transform:uppercase; color:var(--ink); text-align:center; }
+  .count{ display:flex; align-items:baseline; justify-content:center; gap:6px; margin:6px 0 2px; font-family:'Chakra Petch'; font-weight:700; }
+  .count #got{ font-size:64px; color:var(--gold); line-height:1; text-shadow:0 0 22px rgba(245,197,66,.35); }
+  .count .sl,.count #tot{ font-size:34px; color:var(--ink-dim); }
+  .pct{ text-align:center; font-family:'Rajdhani'; font-weight:700; font-size:16px; letter-spacing:.16em; color:var(--gold); }
+  .bigrow{ display:flex; gap:14px; margin-top:20px; }
+  .big{ flex:1; height:96px; border:none; border-radius:14px; cursor:pointer; font-family:'Chakra Petch'; font-weight:700; font-size:34px; color:#04252a; transition:transform .08s; }
+  .big:active{ transform:scale(.95); }
+  .big.plus{ background:linear-gradient(160deg,var(--gold),var(--gold-deep)); color:#3a2a00; box-shadow:0 0 24px -6px var(--gold); }
+  .big.minus{ background:rgba(45,226,230,.12); color:var(--cyan); border:1px solid var(--line); }
+  .sub{ font-family:'Chakra Petch'; font-weight:700; font-size:10px; letter-spacing:.24em; color:var(--ink-dim); text-transform:uppercase; margin:18px 0 8px 2px; }
+  .row{ display:flex; gap:10px; }
+  .sm{ flex:1; height:50px; border:1px solid var(--line); border-radius:11px; cursor:pointer; font-family:'Chakra Petch'; font-weight:700; font-size:15px; letter-spacing:.06em; color:var(--ink); background:rgba(45,226,230,.08); text-transform:uppercase; transition:transform .08s; }
+  .sm:active{ transform:scale(.96); background:var(--cyan); color:#04252a; }
+  .row2{ display:flex; gap:10px; }
+  input{ flex:1; height:50px; padding:0 14px; font-family:'Rajdhani'; font-weight:600; font-size:16px; color:var(--ink); background:rgba(255,255,255,.05); border:1px solid var(--line); border-radius:11px; text-transform:uppercase; }
+  input:focus{ outline:none; border-color:var(--cyan); }
+  #setgame{ flex:0 0 auto; padding:0 20px; }
+  .note{ font-size:12px; color:var(--ink-dim); text-align:center; margin-top:16px; line-height:1.5; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="top"><span class="dot" id="dot"></span><span id="status">Connexion…</span></div>
+    <div class="card">
+      <div class="game" id="game">—</div>
+      <div class="count"><span id="got">–</span><span class="sl">/</span><span id="tot">–</span></div>
+      <div class="pct" id="pct">— %</div>
+      <div class="bigrow">
+        <button class="big minus" data-a="tm">−1</button>
+        <button class="big plus" data-a="tp">+1</button>
+      </div>
+      <div class="sub">Total de trophées</div>
+      <div class="row"><button class="sm" data-a="om">− Total</button><button class="sm" data-a="op">+ Total</button></div>
+      <div class="sub">Changer de jeu</div>
+      <div class="row2"><input id="gi" placeholder="Nom du jeu"><button class="sm" id="setgame">OK</button></div>
+    </div>
+    <div class="note">Garde cette page ouverte sur ton téléphone pendant le stream. Les boutons agissent en direct sur ton overlay.</div>
+  </div>
+
+<script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+<script>
+/* Doit correspondre EXACTEMENT au widget jeu-trophees (même salon). */
+const ROOM="claynor-hud-x7k2";
+const BROKER="wss://broker.hivemq.com:8884/mqtt";
+const TA='claynor/'+ROOM+'/action', TS='claynor/'+ROOM+'/state';
+
+const $=id=>document.getElementById(id);
+function setStatus(ok,txt){ const d=$('dot'); d.style.background=ok?'#3df08a':'#ff5d5d'; d.style.boxShadow='0 0 10px '+(ok?'#3df08a':'#ff5d5d'); $('status').textContent=txt||(ok?'Connecté':'Hors ligne'); }
+
+let cli;
+try{
+  cli=mqtt.connect(BROKER,{reconnectPeriod:3000,connectTimeout:8000});
+  cli.on('connect',()=>{ setStatus(true,'Connecté'); cli.subscribe(TS); });
+  cli.on('reconnect',()=>setStatus(false,'Reconnexion…'));
+  cli.on('close',()=>setStatus(false,'Hors ligne'));
+  cli.on('error',()=>setStatus(false,'Erreur'));
+  cli.on('message',(t,p)=>{ try{ const s=JSON.parse(p.toString()); if(!s) return;
+    if(s.jeu!==undefined) $('game').textContent=s.jeu;
+    if(s.got!==undefined) $('got').textContent=s.got;
+    if(s.total!==undefined) $('tot').textContent=s.total;
+    const pc=s.total?Math.round(s.got/s.total*100):0; $('pct').textContent=pc+' %';
+  }catch(e){} });
+}catch(e){ setStatus(false,'Indisponible'); }
+
+function send(o){ try{ cli && cli.publish(TA, JSON.stringify(o)); }catch(e){} }
+document.querySelectorAll('[data-a]').forEach(b=> b.addEventListener('click',()=> send({a:b.getAttribute('data-a')})) );
+$('setgame').addEventListener('click',()=>{ const v=$('gi').value.trim(); if(v){ send({a:'game',g:v}); $('gi').value=''; } });
+</script>
+</body>
+</html>
