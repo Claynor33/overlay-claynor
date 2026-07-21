@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Alertes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{ --cyan:#2de2e6; --cyan-deep:#0fa3b1; --gold:#f5c542; --gold-deep:#c8951f; --ink:#eaf6f7; --ink-dim:#6f858c; --line:rgba(45,226,230,.28); --tc:#f5c542; }
+  *{ margin:0; padding:0; box-sizing:border-box; }
+  html,body{ width:100%; height:100%; overflow:hidden; background:transparent; font-family:'Rajdhani',sans-serif; color:var(--ink); }
+
+  #toast{ position:absolute; top:56px; left:50%; display:flex; align-items:center; gap:15px; padding:15px 30px; background:linear-gradient(105deg, rgba(14,20,24,.96), rgba(9,13,16,.93)); border:1px solid var(--tc); clip-path:polygon(14px 0,100% 0,calc(100% - 14px) 100%,0 100%); box-shadow:0 0 46px -10px var(--tc), inset 0 0 30px -14px var(--tc); opacity:0; pointer-events:none; transform:translateX(-50%) scale(.85); }
+  #toast.show{ animation:toastIn .5s cubic-bezier(.2,1.3,.3,1) forwards, toastOut .55s ease 3.1s forwards; }
+  #toast::after{ content:''; position:absolute; inset:0; background:linear-gradient(105deg,transparent 42%,rgba(255,255,255,.22) 50%,transparent 58%); transform:translateX(-120%); }
+  #toast.show::after{ animation:shine 1.1s ease .35s; }
+  #toast .tico{ width:38px; height:38px; color:var(--tc); display:inline-flex; filter:drop-shadow(0 0 10px var(--tc)); } #toast .tico svg{ width:100%; height:100%; }
+  #toast .ttxt{ display:flex; flex-direction:column; gap:3px; }
+  #toast .th{ font-family:'Chakra Petch'; font-weight:700; font-size:20px; letter-spacing:.14em; color:var(--tc); text-transform:uppercase; text-shadow:0 0 18px var(--tc); }
+  #toast .ts{ font-family:'Rajdhani'; font-weight:600; font-size:13px; letter-spacing:.2em; color:#dfe8ea; text-transform:uppercase; }
+
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:.25;}}
+@keyframes slideIn{to{opacity:1;transform:translateX(0);}}
+@keyframes pop{0%{transform:scale(1);}35%{transform:scale(1.5);filter:drop-shadow(0 0 16px var(--gold));}100%{transform:scale(1);}}
+@keyframes toastIn{to{opacity:1;transform:translateX(-50%) scale(1);}}
+@keyframes toastOut{to{opacity:0;transform:translateX(-50%) scale(.92) translateY(-8px);}}
+@keyframes shine{to{transform:translateX(120%);}}
+</style>
+</head>
+<body>
+<div id="toast"><span class="tico" id="ti"></span><div class="ttxt"><span class="th" id="tt">—</span><span class="ts" id="tsb">—</span></div></div>
+<script>
+
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function shade(hex,amt){const n=parseInt(hex.slice(1),16);let r=(n>>16)&255,g=(n>>8)&255,b=n&255;const f=amt<0?0:255,t=Math.abs(amt);r=Math.round((f-r)*t+r);g=Math.round((f-g)*t+g);b=Math.round((f-b)*t+b);return '#'+((1<<24)+(r<<16)+(g<<8)+b).toString(16).slice(1);}
+function applyTheme(a){document.documentElement.style.setProperty('--cyan',a);document.documentElement.style.setProperty('--cyan-deep',shade(a,-0.4));}
+function accent(){return getComputedStyle(document.documentElement).getPropertyValue('--cyan').trim()||'#2de2e6';}
+const ICON={
+  follow:`<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 21s-7.5-4.7-10-9.3C.6 8.9 2 5.5 5.2 5.5c1.9 0 3.1 1 3.8 2 .7-1 1.9-2 3.8-2 3.2 0 4.6 3.4 3.2 6.2C19.5 16.3 12 21 12 21z"/></svg>`,
+  sub:`<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.9 6.3 6.9.8-5.1 4.7 1.4 6.8L12 18l-6 3.4 1.4-6.8L2.3 9.1l6.9-.8L12 2z"/></svg>`,
+  gift:`<svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 7h-2.2A2.5 2.5 0 0 0 12 3.2 2.5 2.5 0 0 0 6.2 7H4a1 1 0 0 0-1 1v3h9V7h.9V6H12a1 1 0 1 1 1-1zm-8.5-1H9.9A1.5 1.5 0 1 1 11.5 6zm2.6 5H21V8a1 1 0 0 0-1-1v4zM4 12v8a1 1 0 0 0 1 1h6v-9H4zm9 9h6a1 1 0 0 0 1-1v-8h-7v9z"/></svg>`,
+  don:`<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm.9 15.3v1.2h-1.6v-1.2c-1.4-.2-2.5-1-2.6-2.4h1.6c.1.7.7 1.1 1.8 1.1 1 0 1.6-.4 1.6-1s-.5-.9-1.8-1.2c-1.7-.4-2.9-1-2.9-2.5 0-1.2.9-2 2.3-2.2V5.5h1.6v1.3c1.3.2 2.2 1 2.3 2.2h-1.6c-.1-.6-.6-1-1.5-1s-1.4.4-1.4.9c0 .6.6.8 1.9 1.1 1.8.4 2.8 1.1 2.8 2.6 0 1.2-.9 2.1-2.4 2.4z"/></svg>`,
+  raid:`<svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm7 0a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM3 19v-1a5 5 0 0 1 5-5h2a5 5 0 0 1 5 5v1H3zm12 0v-1a6.5 6.5 0 0 0-1.2-3.8A4 4 0 0 1 21 18v1h-6z"/></svg>`,
+  bits:`<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 2h12l4 6-10 14L2 8l4-6zm.5 2L4 8h4l2-4H6.5zm7 0l2 4H20l-2.5-4H13.5zM10 4L8 8h8l-2-4h-4zM8.4 10L12 18l3.6-8H8.4z"/></svg>`
+};
+function connectStreamlabs(token,onEvent){ if(!token) return; const s=document.createElement('script'); s.src='https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.0.3/socket.io.js'; s.onload=()=>{ try{ const sl=io('https://sockets.streamlabs.com?token='+token,{transports:['websocket']}); sl.on('event',ev=>{ if(!ev||!ev.type) return; const ms=Array.isArray(ev.message)?ev.message:[ev.message]; ms.forEach(m=>{ if(m) onEvent(ev.type,m); }); }); }catch(e){ console.warn(e); } }; s.onerror=()=>console.warn('socket.io non chargé'); document.head.appendChild(s); }
+
+const SKEY='hud_shared_v1';
+let bcHud=null; try{ bcHud=new BroadcastChannel('hud-claynor'); }catch(e){}
+function readShared(){ try{ const r=localStorage.getItem(SKEY); return r?JSON.parse(r):null; }catch(e){ return null; } }
+function writeShared(patch){ let s=readShared()||{}; Object.assign(s,patch); s.v=Date.now(); try{ localStorage.setItem(SKEY,JSON.stringify(s)); }catch(e){} try{ bcHud&&bcHud.postMessage({kind:'state',s}); }catch(e){} return s; }
+function subscribeHud(h){ if(bcHud) bcHud.onmessage=function(ev){ var d=ev.data; if(!d) return; if(d.kind==='state'&&h.state) h.state(d.s); if(d.kind==='trophy'&&h.trophy) h.trophy(d); }; if(h.state){ var lv=0; var c=readShared(); if(c) lv=c.v||0; setInterval(function(){ var s=readShared(); if(s&&(s.v||0)>lv){ lv=s.v; h.state(s); } },400); } if(h.trophy){ var lt=0; try{ var r0=localStorage.getItem('hud_celebrate'); if(r0) lt=JSON.parse(r0).ts||0; }catch(e){} setInterval(function(){ try{ var r=localStorage.getItem('hud_celebrate'); if(r){ var p=JSON.parse(r); if(p.ts&&p.ts>lt){ lt=p.ts; h.trophy(p); } } }catch(e){} },300); } }
+function tokenUrl(fb){ try{ return new URLSearchParams(location.search).get('token') || fb || ''; }catch(e){ return fb||''; } }
+
+const CONFIG={ demo:true, accent:"#2de2e6", son:true, streamlabs:{token:""} };
+let aq=[],busy=false,actx;
+function queue(a){ if(aq.length>6) return; aq.push(a); pump(); }
+function pump(){ if(busy||!aq.length) return; busy=true; show(aq.shift()); setTimeout(()=>{busy=false;pump();},4200); }
+function show(a){ const t=document.getElementById('toast'); t.style.setProperty('--tc',a.color); document.getElementById('ti').innerHTML=a.icon; document.getElementById('tt').textContent=a.title; document.getElementById('tsb').textContent=a.sub; t.classList.remove('show'); void t.offsetWidth; t.classList.add('show'); if(CONFIG.son) ding(a.type); }
+function ding(type){ try{ actx=actx||new (window.AudioContext||window.webkitAudioContext)(); if(actx.state==='suspended') actx.resume(); const now=actx.currentTime; const notes=type==='follow'?[[660,0],[990,0.1]]:[[880,0],[1320,0.11]]; notes.forEach(([f,dt])=>{ const o=actx.createOscillator(),g=actx.createGain(); o.type='triangle'; o.frequency.value=f; g.gain.setValueAtTime(0.0001,now+dt); g.gain.exponentialRampToValueAtTime(0.22,now+dt+0.02); g.gain.exponentialRampToValueAtTime(0.0001,now+dt+0.5); o.connect(g).connect(actx.destination); o.start(now+dt); o.stop(now+dt+0.55); }); }catch(e){} }
+function onEvent(type,m){ const name=(m.name||m.from||m.gifter||'ANON'); const acc=accent();
+  if(type==='follow') queue({type:'follow',title:'Nouveau follow',sub:name,color:acc,icon:ICON.follow});
+  else if(type==='donation'){ const a=m.formatted_amount||m.amount; queue({type:'don',title:'Don',sub:name+(a?' · '+a:''),color:'#3df08a',icon:ICON.don}); }
+  else if(type==='raid'||type==='host') queue({type:type,title:(type==='raid'?'Raid !':'Host'),sub:name+' · '+(m.raiders||m.viewers||0)+' viewers',color:'#ff8a3d',icon:ICON.raid});
+  else if(type==='bits') queue({type:'bits',title:'Bits',sub:name+' · '+(parseInt(m.amount,10)||0)+' bits',color:'#a970ff',icon:ICON.bits});
+  else if(type==='subscription'||type==='resub'){ const st=(m.sub_type||'').toLowerCase();
+    if(st==='subgift'||st==='anonsubgift') queue({type:'sub',title:'Sub offert',sub:(m.gifter||name),color:acc,icon:ICON.gift});
+    else if(st==='submysterygift') queue({type:'sub',title:'Subs offerts',sub:(m.gifter||name)+' · ×'+(m.amount||1),color:acc,icon:ICON.gift});
+    else if(st==='resub'||(m.months&&m.months>1)) queue({type:'sub',title:'Resub',sub:name+' · '+(m.months||1)+' mois',color:acc,icon:ICON.sub});
+    else queue({type:'sub',title:'Nouveau sub',sub:name,color:acc,icon:ICON.sub}); } }
+window.testFollow=(n='NEOxWOLF')=>onEvent('follow',{name:n});
+window.testSub=(n='KALYA_TV')=>onEvent('subscription',{name:n,sub_type:'sub'});
+window.testRaid=(n='POKIMANE',c=138)=>onEvent('raid',{name:n,raiders:c});
+window.testBits=(n='XQCOW',a=500)=>onEvent('bits',{name:n,amount:String(a)});
+var _s=readShared(); applyTheme((_s&&_s.accent)||CONFIG.accent);
+subscribeHud({ state:function(s){ if(s.accent) applyTheme(s.accent); } });
+connectStreamlabs(tokenUrl(CONFIG.streamlabs.token),onEvent);
+if(CONFIG.demo){ setTimeout(()=>testFollow(),1400); setTimeout(()=>testRaid(),6000); setTimeout(()=>testBits(),10400); }
+
+</script>
+</body>
+</html>

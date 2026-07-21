@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HUD Overlay — Stream</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-panel:#0a0f13; --cyan:#2de2e6; --cyan-deep:#0fa3b1;
+    --gold:#f5c542; --gold-deep:#c8951f; --ink:#eaf6f7; --ink-dim:#6f858c;
+    --line:rgba(45,226,230,.28); --tc:#f5c542;
+  }
+  *{ margin:0; padding:0; box-sizing:border-box; }
+  html,body{ width:100%; height:100%; overflow:hidden; background:transparent; }
+  body.preview{ background:radial-gradient(120% 90% at 70% 20%, #16232b 0%, #0a1014 55%, #05080a 100%); }
+  #stage{ position:absolute; top:50%; left:50%; width:1920px; height:1080px; transform-origin:center center; font-family:'Rajdhani',sans-serif; color:var(--ink); }
+
+  /* =================== SOUTIENS (auto Streamlabs) =================== */
+  .alerts{ position:absolute; left:40px; top:40px; width:312px; }
+  .alerts-head{ display:flex; align-items:center; gap:9px; margin:0 0 9px 3px; font-family:'Chakra Petch'; font-weight:600; font-size:10px; letter-spacing:.36em; color:var(--ink-dim); text-transform:uppercase; }
+  .alerts-head .dot{ width:6px; height:6px; border-radius:50%; background:var(--cyan); box-shadow:0 0 9px var(--cyan); animation:blink 1.6s ease-in-out infinite; }
+  .alert{ position:relative; display:flex; align-items:center; gap:11px; height:40px; padding:0 14px 0 16px; margin-bottom:7px;
+    background:linear-gradient(90deg, rgba(13,22,27,.94) 0%, rgba(10,15,19,.68) 100%);
+    clip-path:polygon(0 0, 100% 0, 100% 100%, 11px 100%, 0 calc(100% - 11px));
+    opacity:0; transform:translateX(-20px); animation:slideIn .5s cubic-bezier(.2,.7,.2,1) forwards; }
+  .alert::before{ content:''; position:absolute; left:0; top:0; bottom:0; width:3px; background:linear-gradient(var(--cyan),var(--cyan-deep)); box-shadow:0 0 10px var(--cyan); }
+  .alert .name{ font-family:'Chakra Petch'; font-weight:700; font-size:14px; letter-spacing:.1em; color:var(--ink); text-transform:uppercase; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .alert .sep{ flex:1; height:1px; min-width:8px; background:linear-gradient(90deg,var(--line),transparent); }
+  .alert .tag{ font-family:'Rajdhani'; font-weight:700; font-size:11px; letter-spacing:.16em; color:var(--cyan); text-transform:uppercase; white-space:nowrap; }
+  .alert .tag b{ color:var(--gold); }
+  .alert.placeholder{ opacity:.4; }
+  .alert.placeholder::before{ background:var(--ink-dim); box-shadow:none; }
+  .alert.placeholder .name,.alert.placeholder .tag{ color:var(--ink-dim); }
+
+  /* =================== OBJECTIF DU LIVE =================== */
+  .goal{ position:absolute; right:40px; top:40px; width:280px; padding:12px 16px 13px;
+    background:linear-gradient(105deg, rgba(11,17,21,.95), rgba(9,14,18,.9));
+    clip-path:polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%);
+    opacity:0; transform:translateY(-16px); animation:hudIn .6s cubic-bezier(.2,.7,.2,1) .2s forwards; }
+  .goal::before{ content:''; position:absolute; left:0; top:0; height:2px; width:100%; background:linear-gradient(90deg,transparent 30%,var(--cyan)); box-shadow:0 0 10px var(--cyan); }
+  .goal-head{ display:flex; align-items:baseline; justify-content:space-between; margin-bottom:8px; }
+  .goal-label{ font-family:'Chakra Petch'; font-weight:600; font-size:11px; letter-spacing:.26em; color:var(--ink-dim); text-transform:uppercase; }
+  .goal-count{ font-family:'Chakra Petch'; font-weight:700; font-size:15px; letter-spacing:.04em; color:var(--cyan); }
+  .goal-bar{ position:relative; height:6px; background:rgba(255,255,255,.06); border-radius:2px; overflow:hidden; }
+  .goal-bar-fill{ position:absolute; left:0; top:0; bottom:0; width:0; background:linear-gradient(90deg,var(--cyan-deep),var(--cyan)); box-shadow:0 0 10px var(--cyan); border-radius:2px; transition:width 1s cubic-bezier(.2,.8,.2,1); }
+  .goal.done .goal-count{ color:var(--gold); }
+  .goal.done .goal-bar-fill{ background:linear-gradient(90deg,var(--gold-deep),var(--gold)); box-shadow:0 0 12px rgba(245,197,66,.7); }
+
+  /* =================== DOCK GAUCHE : CAMÉRA + JEU/TROPHÉES =================== */
+  .dock{ position:absolute; left:40px; bottom:40px; width:360px; }
+  .dock::before{ content:''; position:absolute; left:-1px; top:0; bottom:0; width:3px; background:linear-gradient(var(--cyan),var(--cyan-deep)); box-shadow:0 0 12px var(--cyan); z-index:4; }
+  .cam{ position:relative; width:100%; height:203px; overflow:hidden; background:linear-gradient(135deg, rgba(12,20,25,.5), rgba(6,11,14,.2)); opacity:0; transform:translateY(20px); animation:hudIn .6s cubic-bezier(.2,.7,.2,1) .15s forwards; }
+  body:not(.preview) .cam{ background:transparent; }
+  .cam-edge{ position:absolute; inset:0; border:1px solid var(--line); border-left:none; pointer-events:none; }
+  .cam-label{ position:absolute; left:0; top:0; display:flex; align-items:center; gap:7px; height:24px; padding:0 12px; background:linear-gradient(90deg, rgba(10,15,19,.92), rgba(10,15,19,.35)); font-family:'Chakra Petch'; font-weight:700; font-size:10px; letter-spacing:.28em; color:var(--cyan); text-transform:uppercase; z-index:3; }
+  .cam-label .live{ width:6px; height:6px; border-radius:50%; background:#ff4d4d; box-shadow:0 0 8px #ff4d4d; animation:blink 1.4s ease-in-out infinite; }
+  .cam-hint{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-family:'Chakra Petch'; letter-spacing:.4em; font-size:15px; color:rgba(111,133,140,.4); text-transform:uppercase; }
+  body:not(.preview) .cam-hint{ display:none; }
+  .cam-bracket{ position:absolute; width:22px; height:22px; z-index:3; }
+  .cam-bracket::before,.cam-bracket::after{ content:''; position:absolute; background:var(--cyan); box-shadow:0 0 8px var(--cyan); }
+  .cam-bracket::before{ width:100%; height:2px; } .cam-bracket::after{ width:2px; height:100%; }
+  .cb-tr{ top:0; right:0; } .cb-tr::before{ top:0; right:0; } .cb-tr::after{ top:0; right:0; }
+  .cb-br{ bottom:0; right:0; } .cb-br::before{ bottom:0; right:0; } .cb-br::after{ bottom:0; right:0; }
+  .cb-bl{ bottom:0; left:0; } .cb-bl::before{ bottom:0; left:0; } .cb-bl::after{ bottom:0; left:0; }
+
+  .bar{ position:relative; width:100%; height:64px; display:flex; align-items:stretch; background:linear-gradient(105deg, rgba(11,17,21,.97), rgba(9,14,18,.93)); clip-path:polygon(0 0, 100% 0, 100% 100%, 16px 100%, 0 calc(100% - 16px)); opacity:0; transform:translateY(20px); animation:hudIn .6s cubic-bezier(.2,.7,.2,1) .3s forwards; overflow:hidden; }
+  .bar::after{ content:''; position:absolute; inset:0; background:linear-gradient(105deg,transparent 40%, rgba(45,226,230,.08) 50%, transparent 60%); transform:translateX(-100%); animation:sweep 6s ease-in-out 1.4s infinite; }
+  .bar-game{ position:relative; flex:1; padding:9px 10px 9px 16px; display:flex; flex-direction:column; justify-content:center; gap:3px; z-index:2; min-width:0; }
+  .eyebrow{ display:flex; align-items:center; gap:7px; font-family:'Chakra Petch'; font-weight:600; font-size:9px; letter-spacing:.34em; color:var(--ink-dim); text-transform:uppercase; }
+  .eyebrow .live{ width:6px; height:6px; border-radius:50%; background:var(--cyan); box-shadow:0 0 8px var(--cyan); animation:blink 1.5s ease-in-out infinite; }
+  .game-name{ font-family:'Chakra Petch'; font-weight:700; font-size:25px; line-height:.95; letter-spacing:.05em; color:var(--ink); text-transform:uppercase; text-shadow:0 0 16px rgba(45,226,230,.22); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .bar-div{ width:1px; align-self:stretch; margin:12px 0; background:linear-gradient(var(--line),transparent); z-index:2; }
+  .bar-trophy{ position:relative; display:flex; flex-direction:column; align-items:flex-end; justify-content:center; gap:3px; padding:0 16px 0 14px; z-index:2; }
+  .trophy-main{ display:flex; align-items:center; gap:9px; }
+  .trophy-ico{ width:26px; height:26px; filter:drop-shadow(0 0 7px rgba(245,197,66,.5)); }
+  .trophy-count{ display:flex; align-items:baseline; gap:3px; font-family:'Chakra Petch'; font-weight:700; }
+  .trophy-count .got{ font-size:25px; color:var(--gold); line-height:1; text-shadow:0 0 14px rgba(245,197,66,.35); transition:transform .25s ease; }
+  .trophy-count .got.pop{ animation:pop .55s cubic-bezier(.2,1.4,.3,1); }
+  .trophy-count .slash{ font-size:16px; color:var(--ink-dim); } .trophy-count .tot{ font-size:16px; color:var(--ink-dim); }
+  .trophy-pct{ font-family:'Rajdhani'; font-weight:700; font-size:12px; letter-spacing:.16em; color:var(--gold); text-shadow:0 0 10px rgba(245,197,66,.3); }
+  .bar-progress{ position:absolute; left:0; right:0; bottom:0; height:3px; background:rgba(255,255,255,.06); z-index:3; }
+  .bar-progress-fill{ position:absolute; left:0; top:0; bottom:0; width:0; background:linear-gradient(90deg,var(--gold-deep),var(--gold)); box-shadow:0 0 10px rgba(245,197,66,.6); transition:width 1.1s cubic-bezier(.2,.8,.2,1); }
+
+  /* =================== ALERTE (trophée / follow / sub…) =================== */
+  #toast{ position:absolute; top:130px; left:50%; z-index:60; display:flex; align-items:center; gap:15px; padding:15px 30px;
+    background:linear-gradient(105deg, rgba(14,20,24,.96), rgba(9,13,16,.93));
+    border:1px solid var(--tc); clip-path:polygon(14px 0,100% 0,calc(100% - 14px) 100%,0 100%);
+    box-shadow:0 0 46px -10px var(--tc), inset 0 0 30px -14px var(--tc);
+    opacity:0; pointer-events:none; transform:translateX(-50%) scale(.85); }
+  #toast.show{ animation:toastIn .5s cubic-bezier(.2,1.3,.3,1) forwards, toastOut .55s ease 3.1s forwards; }
+  #toast::after{ content:''; position:absolute; inset:0; background:linear-gradient(105deg,transparent 42%,rgba(255,255,255,.22) 50%,transparent 58%); transform:translateX(-120%); }
+  #toast.show::after{ animation:shine 1.1s ease .35s; }
+  #toast .tico{ width:38px; height:38px; color:var(--tc); display:inline-flex; filter:drop-shadow(0 0 10px var(--tc)); }
+  #toast .tico svg{ width:100%; height:100%; }
+  #toast .ttxt{ display:flex; flex-direction:column; gap:3px; }
+  #toast .th{ font-family:'Chakra Petch'; font-weight:700; font-size:20px; letter-spacing:.14em; color:var(--tc); text-transform:uppercase; text-shadow:0 0 18px var(--tc); }
+  #toast .ts{ font-family:'Rajdhani'; font-weight:600; font-size:13px; letter-spacing:.2em; color:#dfe8ea; text-transform:uppercase; }
+
+  /* =================== PANNEAU DE CONTRÔLE (OBS > Interagir) =================== */
+  #ctrl{ position:absolute; top:22px; left:50%; transform:translateX(-50%) translateY(-12px); z-index:80; display:flex; flex-direction:column; gap:9px; padding:14px 16px; background:rgba(6,11,14,.96); border:1px solid var(--line); border-radius:10px; box-shadow:0 12px 40px rgba(0,0,0,.6); font-family:'Rajdhani',sans-serif; opacity:0; pointer-events:none; transition:opacity .18s ease, transform .18s ease; }
+  #ctrl.show{ opacity:1; pointer-events:auto; transform:translateX(-50%) translateY(0); }
+  #ctrl .title{ font-family:'Chakra Petch'; font-weight:700; font-size:11px; letter-spacing:.3em; color:var(--cyan); text-transform:uppercase; text-align:center; }
+  #ctrl .row{ display:flex; align-items:center; gap:8px; }
+  #ctrl .lbl{ width:74px; font-weight:700; font-size:12px; letter-spacing:.1em; color:var(--ink-dim); text-transform:uppercase; }
+  #ctrl button{ min-width:32px; height:32px; padding:0 10px; cursor:pointer; font-family:'Chakra Petch'; font-weight:700; font-size:15px; color:var(--ink); background:rgba(45,226,230,.10); border:1px solid var(--line); border-radius:6px; transition:.12s; }
+  #ctrl button:hover{ background:var(--cyan); color:#04252a; }
+  #ctrl button.gold{ background:rgba(245,197,66,.12); border-color:rgba(245,197,66,.4); } #ctrl button.gold:hover{ background:var(--gold); color:#3a2a00; }
+  #ctrl button.toggle{ min-width:44px; font-size:12px; letter-spacing:.1em; }
+  #ctrl button.on{ background:var(--cyan); color:#04252a; border-color:var(--cyan); }
+  #ctrl .val{ min-width:54px; text-align:center; font-family:'Chakra Petch'; font-weight:700; font-size:16px; color:var(--gold); }
+  #ctrl .val.acc{ color:var(--cyan); }
+  #ctrl input{ flex:1; height:32px; padding:0 10px; font-family:'Rajdhani'; font-weight:600; font-size:14px; color:var(--ink); background:rgba(255,255,255,.05); border:1px solid var(--line); border-radius:6px; text-transform:uppercase; }
+  #ctrl input:focus{ outline:none; border-color:var(--cyan); }
+  #ctrl .hint{ font-size:10px; letter-spacing:.06em; color:var(--ink-dim); text-align:center; margin-top:2px; }
+
+  @keyframes blink{ 0%,100%{opacity:1;} 50%{opacity:.25;} }
+  @keyframes slideIn{ to{ opacity:1; transform:translateX(0);} }
+  @keyframes hudIn{ to{ opacity:1; transform:translateY(0);} }
+  @keyframes sweep{ 0%{transform:translateX(-100%);} 18%,100%{transform:translateX(100%);} }
+  @keyframes pop{ 0%{transform:scale(1);} 35%{transform:scale(1.5); filter:drop-shadow(0 0 16px var(--gold));} 100%{transform:scale(1);} }
+  @keyframes toastIn{ to{ opacity:1; transform:translateX(-50%) scale(1);} }
+  @keyframes toastOut{ to{ opacity:0; transform:translateX(-50%) scale(.92) translateY(-8px);} }
+  @keyframes shine{ to{ transform:translateX(120%);} }
+  @media (prefers-reduced-motion: reduce){ .bar::after,#toast.show::after{ animation:none; } .alert,.cam,.bar,.goal{ animation-duration:.01ms; } .live,.dot{ animation:none; } }
+</style>
+</head>
+<body>
+  <div id="stage">
+
+    <div class="alerts" id="alerts">
+      <div class="alerts-head"><span class="dot"></span>Derniers soutiens</div>
+      <div id="alertList"></div>
+    </div>
+
+    <div class="goal" id="goal">
+      <div class="goal-head"><span class="goal-label" id="goalLabel">Objectif</span><span class="goal-count" id="goalCount">0 / 5</span></div>
+      <div class="goal-bar"><div class="goal-bar-fill" id="goalBar"></div></div>
+    </div>
+
+    <div class="dock">
+      <div class="cam">
+        <div class="cam-edge"></div>
+        <div class="cam-label"><span class="live"></span><span id="camLabel">CLAYNOR</span></div>
+        <div class="cam-hint">Caméra</div>
+        <span class="cam-bracket cb-tr"></span><span class="cam-bracket cb-br"></span><span class="cam-bracket cb-bl"></span>
+      </div>
+      <div class="bar">
+        <div class="bar-game">
+          <div class="eyebrow"><span class="live"></span>En cours</div>
+          <div class="game-name" id="gameName">CRYSIS</div>
+        </div>
+        <div class="bar-div"></div>
+        <div class="bar-trophy">
+          <div class="trophy-main">
+            <svg class="trophy-ico" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M6 4h12v3a6 6 0 0 1-12 0V4Z" fill="#f5c542"/>
+              <path d="M18 4h3v2a3 3 0 0 1-3 3M6 4H3v2a3 3 0 0 0 3 3" stroke="#f5c542" stroke-width="1.6" stroke-linecap="round"/>
+              <path d="M10 13h4v3h-4z" fill="#c8951f"/><path d="M8 19h8v1.5H8z" fill="#f5c542"/><path d="M9.5 16.5h5V19h-5z" fill="#c8951f"/>
+            </svg>
+            <div class="trophy-count"><span class="got" id="tGot">0</span><span class="slash">/</span><span class="tot" id="tTot">41</span></div>
+          </div>
+          <div class="trophy-pct" id="tPct">0 %</div>
+        </div>
+        <div class="bar-progress"><div class="bar-progress-fill" id="tBar"></div></div>
+      </div>
+    </div>
+
+    <div id="toast">
+      <span class="tico" id="toastIcon"></span>
+      <div class="ttxt"><span class="th" id="toastTitle">Trophée débloqué</span><span class="ts" id="toastSub">—</span></div>
+    </div>
+
+    <div id="ctrl">
+      <div class="title">Contrôle live</div>
+      <div class="row"><span class="lbl">Trophées</span><button data-act="tMinus">−</button><span class="val"><span id="cGot">3</span>/<span id="cTot">41</span></span><button class="gold" data-act="tPlus">+</button></div>
+      <div class="row"><span class="lbl">Total</span><button data-act="totMinus">−</button><span class="val" id="cTot2">41</span><button data-act="totPlus">+</button></div>
+      <div class="row"><span class="lbl">Objectif</span><button data-act="goalMinus">−</button><span class="val acc" id="cGoal">0</span><button data-act="goalPlus">+</button><button class="toggle" data-act="goalToggle" id="goalToggleBtn">ON</button></div>
+      <div class="row"><span class="lbl">Jeu</span><input id="cGame" type="text" placeholder="Nom du jeu"><button data-act="gameOk">OK</button></div>
+      <div class="hint">Changer de jeu recharge ses trophées + sa couleur · ON/OFF masque l'objectif</div>
+    </div>
+
+  </div>
+
+<script>
+/* =========================================================================
+   CONFIG
+   ========================================================================= */
+const CONFIG = {
+  modePreview: false,                      // false = OBS (transparent) · true = aperçu/test sur fond sombre
+  jeu: { nom:"CRYSIS" },
+  trophees: { obtenus:3, total:41 },       // valeurs par défaut d'un NOUVEAU jeu
+  cam: { label:"CLAYNOR" },
+  streamlabs: { token:"" },                // <-- COLLE ton Socket API Token ici (soutiens + alertes auto)
+  maxSoutiens: 3,
+  son: true,                               // son des alertes (OBS capte l'audio du navigateur)
+  alertes: { follow:true, sub:true, raid:true, bits:true }, // animations follow / sub / raid / bits
+  objectif: { actif:true, label:"Objectif subs", cible:5, type:"subs" }, // type: subs | dons | trophees | manuel
+  themes: { "CRYSIS":"#2de2e6" }           // couleur d'accent forcée par jeu (les autres sont auto)
+};
+const LABELS = { resub:"Resub", gift:"Sub offert", sub:"Sub", follow:"Follow", don:"Don", raid:"Raid", host:"Host", bits:"Bits" };
+const STORE_KEY = "hudState_v4";
+
+/* icônes monochromes (prennent la couleur de l'alerte) */
+const ICON = {
+  follow:`<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 21s-7.5-4.7-10-9.3C.6 8.9 2 5.5 5.2 5.5c1.9 0 3.1 1 3.8 2 .7-1 1.9-2 3.8-2 3.2 0 4.6 3.4 3.2 6.2C19.5 16.3 12 21 12 21z"/></svg>`,
+  sub:`<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.9 6.3 6.9.8-5.1 4.7 1.4 6.8L12 18l-6 3.4 1.4-6.8L2.3 9.1l6.9-.8L12 2z"/></svg>`,
+  gift:`<svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 7h-2.2A2.5 2.5 0 0 0 12 3.2 2.5 2.5 0 0 0 6.2 7H4a1 1 0 0 0-1 1v3h9V7h.9V6H12a1 1 0 1 1 1-1zm-8.5-1v0H9.9A1.5 1.5 0 1 1 11.5 6zm2.6 5H21V8a1 1 0 0 0-1-1v4zM4 12v8a1 1 0 0 0 1 1h6v-9H4zm9 9h6a1 1 0 0 0 1-1v-8h-7v9z"/></svg>`,
+  don:`<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm.9 15.3v1.2h-1.6v-1.2c-1.4-.2-2.5-1-2.6-2.4h1.6c.1.7.7 1.1 1.8 1.1 1 0 1.6-.4 1.6-1s-.5-.9-1.8-1.2c-1.7-.4-2.9-1-2.9-2.5 0-1.2.9-2 2.3-2.2V5.5h1.6v1.3c1.3.2 2.2 1 2.3 2.2h-1.6c-.1-.6-.6-1-1.5-1s-1.4.4-1.4.9c0 .6.6.8 1.9 1.1 1.8.4 2.8 1.1 2.8 2.6 0 1.2-.9 2.1-2.4 2.4z"/></svg>`,
+  trophy:`<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 4V3h10v1h4v3a4 4 0 0 1-4 4h-.3A5 5 0 0 1 13 13.9V16h3v2H8v-2h3v-2.1A5 5 0 0 1 7.3 11H7a4 4 0 0 1-4-4V4h4zm0 2H5v1a2 2 0 0 0 2 2V6zm10 0v3a2 2 0 0 0 2-2V6h-2z"/></svg>`,
+  raid:`<svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm7 0a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM3 19v-1a5 5 0 0 1 5-5h2a5 5 0 0 1 5 5v1H3zm12 0v-1a6.5 6.5 0 0 0-1.2-3.8A4 4 0 0 1 21 18v1h-6z"/></svg>`,
+  bits:`<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 2h12l4 6-10 14L2 8l4-6zm.5 2L4 8h4l2-4H6.5zm7 0l2 4H20l-2.5-4H13.5zM10 4L8 8h8l-2-4h-4zM8.4 10L12 18l3.6-8H8.4z"/></svg>`
+};
+
+/* =========================================================================
+   ÉTAT + STOCKAGES
+   ========================================================================= */
+let state    = load()        || { jeu:{...CONFIG.jeu}, trophees:{...CONFIG.trophees} };
+let feed     = loadFeed();
+let profils  = loadProfils();
+let objectif = loadObjectif() || { actuel:0, actif:CONFIG.objectif.actif };
+if(objectif.actif === undefined) objectif.actif = CONFIG.objectif.actif;
+
+function load(){ try{ const r=localStorage.getItem(STORE_KEY); return r?JSON.parse(r):null; }catch(e){ return null; } }
+function save(){ try{ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }catch(e){} }
+function loadFeed(){ try{ const r=localStorage.getItem(STORE_KEY+'_feed'); return r?JSON.parse(r):[]; }catch(e){ return []; } }
+function saveFeed(){ try{ localStorage.setItem(STORE_KEY+'_feed', JSON.stringify(feed)); }catch(e){} }
+function loadProfils(){ try{ const r=localStorage.getItem(STORE_KEY+'_profils'); return r?JSON.parse(r):{}; }catch(e){ return {}; } }
+function saveProfils(){ try{ localStorage.setItem(STORE_KEY+'_profils', JSON.stringify(profils)); }catch(e){} }
+function loadObjectif(){ try{ const r=localStorage.getItem(STORE_KEY+'_obj'); return r?JSON.parse(r):null; }catch(e){ return null; } }
+function saveObjectif(){ try{ localStorage.setItem(STORE_KEY+'_obj', JSON.stringify(objectif)); }catch(e){} }
+
+/* =========================================================================
+   THÈME PAR JEU
+   ========================================================================= */
+const PALETTE = ["#2de2e6","#9d5cff","#ff8a3d","#3df08a","#ff4d8d","#3d8bff","#ff5d5d","#5ad1a0"];
+function accentFor(nom){ if(CONFIG.themes[nom]) return CONFIG.themes[nom]; let h=0; for(const ch of (nom||'').toUpperCase()) h=(h*31 + ch.charCodeAt(0))>>>0; return PALETTE[h % PALETTE.length]; }
+function shade(hex, amt){ const n=parseInt(hex.slice(1),16); let r=(n>>16)&255,g=(n>>8)&255,b=n&255; const f=amt<0?0:255,t=Math.abs(amt); r=Math.round((f-r)*t+r); g=Math.round((f-g)*t+g); b=Math.round((f-b)*t+b); return '#'+((1<<24)+(r<<16)+(g<<8)+b).toString(16).slice(1); }
+function applyTheme(nom){ const a=accentFor(nom); document.documentElement.style.setProperty('--cyan', a); document.documentElement.style.setProperty('--cyan-deep', shade(a,-0.4)); }
+function accent(){ return getComputedStyle(document.documentElement).getPropertyValue('--cyan').trim() || '#2de2e6'; }
+function gold(){ return getComputedStyle(document.documentElement).getPropertyValue('--gold').trim() || '#f5c542'; }
+
+/* =========================================================================
+   RENDU
+   ========================================================================= */
+let prevGot = null;
+function render(){
+  document.body.classList.toggle('preview', CONFIG.modePreview);
+  document.getElementById('camLabel').textContent = CONFIG.cam.label;
+  document.getElementById('gameName').textContent = state.jeu.nom;
+  const got=state.trophees.obtenus, tot=state.trophees.total, gotEl=document.getElementById('tGot');
+  document.getElementById('tTot').textContent = tot;
+  const pct = tot ? Math.round((got/tot)*100) : 0;
+  document.getElementById('tPct').textContent = pct+' %';
+  requestAnimationFrame(()=> document.getElementById('tBar').style.width = pct+'%');
+  if(prevGot === null) countUp(gotEl, got, 900);
+  else if(got > prevGot){ gotEl.textContent = got; popTrophy(gotEl); celebrate(); }
+  else gotEl.textContent = got;
+  prevGot = got;
+  document.getElementById('cGot').textContent = got;
+  document.getElementById('cTot').textContent = tot;
+  document.getElementById('cTot2').textContent = tot;
+  renderFeed(); renderGoal();
+}
+function renderFeed(){
+  const list=document.getElementById('alertList'); list.innerHTML='';
+  if(feed.length===0){ const el=document.createElement('div'); el.className='alert placeholder'; el.innerHTML=`<span class="name">En attente…</span><span class="sep"></span><span class="tag">—</span>`; list.appendChild(el); return; }
+  feed.forEach((s,i)=>{ const el=document.createElement('div'); el.className='alert'; el.style.animationDelay=(i*0.08)+'s'; el.innerHTML=`<span class="name">${esc(s.nom)}</span><span class="sep"></span><span class="tag">${s.tag}</span>`; list.appendChild(el); });
+}
+function renderGoal(){
+  const g=document.getElementById('goal');
+  updateGoalToggle();
+  if(!objectif.actif){ g.style.display='none'; return; }
+  g.style.display='';
+  let actuel=objectif.actuel, cible=CONFIG.objectif.cible;
+  if(CONFIG.objectif.type==='trophees'){ actuel=state.trophees.obtenus; cible=CONFIG.objectif.cible || state.trophees.total; }
+  document.getElementById('goalLabel').textContent = CONFIG.objectif.label;
+  document.getElementById('goalCount').textContent = actuel+' / '+cible;
+  document.getElementById('cGoal').textContent = actuel;
+  const pct = cible ? Math.min(100, Math.round((actuel/cible)*100)) : 0;
+  requestAnimationFrame(()=> document.getElementById('goalBar').style.width = pct+'%');
+  g.classList.toggle('done', cible>0 && actuel>=cible);
+}
+function updateGoalToggle(){ const b=document.getElementById('goalToggleBtn'); b.textContent = objectif.actif?'ON':'OFF'; b.classList.toggle('on', objectif.actif); }
+function popTrophy(el){ el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop'); }
+function countUp(node,target,dur){ const t0=performance.now(); (function step(now){ const p=Math.min((now-t0)/dur,1); node.textContent=Math.round((1-Math.pow(1-p,3))*target); if(p<1) requestAnimationFrame(step); })(performance.now()); }
+function esc(s){ return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+/* =========================================================================
+   ALERTES ANIMÉES (trophée / follow / sub / gift / don) — file d'attente
+   ========================================================================= */
+let aq=[], aBusy=false;
+function queueAlert(a){ if(aq.length>6) return; aq.push(a); pumpAlerts(); }
+function pumpAlerts(){ if(aBusy || !aq.length) return; aBusy=true; showAlert(aq.shift()); setTimeout(()=>{ aBusy=false; pumpAlerts(); }, 4200); }
+function showAlert(a){
+  const t=document.getElementById('toast');
+  t.style.setProperty('--tc', a.color);
+  document.getElementById('toastIcon').innerHTML = a.icon;
+  document.getElementById('toastTitle').textContent = a.title;
+  document.getElementById('toastSub').textContent = a.sub;
+  t.classList.remove('show'); void t.offsetWidth; t.classList.add('show');
+  if(CONFIG.son) ding(a.type);
+}
+function celebrate(){ const got=state.trophees.obtenus,tot=state.trophees.total,pct=tot?Math.round(got/tot*100):0;
+  queueAlert({type:'trophy', title:'Trophée débloqué', sub:got+' / '+tot+' · '+pct+' %', color:gold(), icon:ICON.trophy}); }
+
+let actx;
+function ding(type){
+  try{
+    actx = actx || new (window.AudioContext||window.webkitAudioContext)();
+    if(actx.state==='suspended') actx.resume();
+    const now=actx.currentTime;
+    const notes = type==='follow' ? [[660,0],[990,0.1]] : type==='trophy' ? [[784,0],[1175,0.11]] : [[880,0],[1320,0.11]];
+    notes.forEach(([f,dt])=>{ const o=actx.createOscillator(), g=actx.createGain(); o.type='triangle'; o.frequency.value=f;
+      g.gain.setValueAtTime(0.0001, now+dt); g.gain.exponentialRampToValueAtTime(0.22, now+dt+0.02); g.gain.exponentialRampToValueAtTime(0.0001, now+dt+0.5);
+      o.connect(g).connect(actx.destination); o.start(now+dt); o.stop(now+dt+0.55); });
+  }catch(e){}
+}
+
+/* =========================================================================
+   SOUTIENS + STREAMLABS
+   ========================================================================= */
+function pushSoutien(nom, tag){ feed.unshift({nom, tag}); feed=feed.slice(0,CONFIG.maxSoutiens); saveFeed(); renderFeed(); }
+function formatTag(type, n){ const l=LABELS[type]||type;
+  if(type==='don') return n ? `${l} ${esc(n)}` : l;
+  if(type==='raid'||type==='host'||type==='bits') return n ? `${l} <b>${n}</b>` : l;
+  return n&&n>1 ? `${l} <b>×${n}</b>` : l; }
+function bumpGoal(type, val){ if(objectif.actif && CONFIG.objectif.type===type){ objectif.actuel += (val||1); saveObjectif(); renderGoal(); } }
+function connectStreamlabs(token){ if(!token) return; const s=document.createElement('script'); s.src='https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.0.3/socket.io.js'; s.onload=()=>initSocket(token); s.onerror=()=>console.warn('[HUD] socket.io non chargé'); document.head.appendChild(s); }
+function initSocket(token){ try{ const sl=io('https://sockets.streamlabs.com?token='+token,{transports:['websocket']}); sl.on('connect',()=>console.log('[HUD] Streamlabs connecté')); sl.on('event',ev=>{ if(!ev||!ev.type) return; const msgs=Array.isArray(ev.message)?ev.message:[ev.message]; msgs.forEach(m=>{ if(m) handleEvent(ev.type,m); }); }); }catch(e){ console.warn('[HUD] Streamlabs',e); } }
+function handleEvent(type,m){
+  const name=(m.name||m.from||m.gifter||'ANON');
+  if(type==='follow'){
+    pushSoutien(name, formatTag('follow'));
+    if(CONFIG.alertes.follow) queueAlert({type:'follow', title:'Nouveau follow', sub:name, color:accent(), icon:ICON.follow});
+  } else if(type==='donation'){
+    const amt=m.formatted_amount||m.amount;
+    pushSoutien(name, formatTag('don', amt)); bumpGoal('dons', Number(m.amount)||0);
+    queueAlert({type:'don', title:'Don', sub:name+(amt?' · '+amt:''), color:'#3df08a', icon:ICON.don});
+  } else if(type==='subscription'||type==='resub'){
+    const st=(m.sub_type||'').toLowerCase(); let tag, alerte;
+    if(st==='subgift'||st==='anonsubgift'){ const g=m.gifter||name; tag={nom:g,t:formatTag('gift',1)}; alerte={type:'gift',title:'Sub offert',sub:g,icon:ICON.gift}; bumpGoal('subs',1); }
+    else if(st==='submysterygift'){ const g=m.gifter||name; tag={nom:g,t:formatTag('gift',m.amount||1)}; alerte={type:'gift',title:'Subs offerts',sub:g+' · ×'+(m.amount||1),icon:ICON.gift}; bumpGoal('subs',m.amount||1); }
+    else if(st==='resub'||(m.months&&m.months>1)){ tag={nom:name,t:formatTag('resub',m.months||1)}; alerte={type:'sub',title:'Resub',sub:name+' · '+(m.months||1)+' mois',icon:ICON.sub}; bumpGoal('subs',1); }
+    else { tag={nom:name,t:formatTag('sub',1)}; alerte={type:'sub',title:'Nouveau sub',sub:name,icon:ICON.sub}; bumpGoal('subs',1); }
+    pushSoutien(tag.nom, tag.t);
+    if(CONFIG.alertes.sub){ alerte.color=accent(); queueAlert(alerte); }
+  } else if(type==='raid'||type==='host'){
+    const count = m.raiders || m.viewers || m.count || 0;
+    pushSoutien(name, formatTag(type, count));
+    if(CONFIG.alertes.raid) queueAlert({type:type, title:(type==='raid'?'Raid !':'Host'), sub:name+' · '+count+' viewers', color:'#ff8a3d', icon:ICON.raid});
+  } else if(type==='bits'){
+    const amt = parseInt(m.amount,10)||0;
+    pushSoutien(name, formatTag('bits', amt)); bumpGoal('bits', amt);
+    if(CONFIG.alertes.bits) queueAlert({type:'bits', title:'Bits', sub:name+' · '+amt+' bits', color:'#a970ff', icon:ICON.bits});
+  }
+}
+
+/* =========================================================================
+   PROFILS PAR JEU
+   ========================================================================= */
+function saveCurrentProfile(){ profils[state.jeu.nom]={ obtenus:state.trophees.obtenus, total:state.trophees.total }; saveProfils(); }
+function changerJeu(nouveau){
+  nouveau=(nouveau||'').trim(); if(!nouveau || nouveau===state.jeu.nom) return;
+  saveCurrentProfile();
+  const p = profils[nouveau] || { obtenus:0, total:CONFIG.trophees.total };
+  state.jeu.nom=nouveau; state.trophees.obtenus=p.obtenus; state.trophees.total=p.total;
+  profils[nouveau]={obtenus:p.obtenus,total:p.total}; saveProfils(); save();
+  applyTheme(nouveau); prevGot=state.trophees.obtenus; render(); syncInputs(); window.__pubShared&&window.__pubShared();
+}
+
+/* =========================================================================
+   CONTRÔLE LIVE
+   ========================================================================= */
+function commit(){ saveCurrentProfile(); save(); render(); window.__pubShared&&window.__pubShared(); }
+document.getElementById('ctrl').addEventListener('click', e=>{
+  const act=e.target.getAttribute('data-act'); if(!act) return; const S=state.trophees;
+  if(act==='tPlus'){ S.obtenus=Math.min(S.obtenus+1,S.total); commit(); }
+  if(act==='tMinus'){ S.obtenus=Math.max(S.obtenus-1,0); commit(); }
+  if(act==='totPlus'){ S.total++; commit(); }
+  if(act==='totMinus'){ S.total=Math.max(S.total-1,S.obtenus); commit(); }
+  if(act==='goalPlus'){ objectif.actuel++; saveObjectif(); renderGoal(); }
+  if(act==='goalMinus'){ objectif.actuel=Math.max(0,objectif.actuel-1); saveObjectif(); renderGoal(); }
+  if(act==='goalToggle'){ objectif.actif=!objectif.actif; saveObjectif(); renderGoal(); }
+  if(act==='gameOk'){ changerJeu(document.getElementById('cGame').value); }
+});
+function syncInputs(){ document.getElementById('cGame').value = state.jeu.nom; }
+document.addEventListener('keydown', e=>{ if(e.target.tagName==='INPUT') return; const S=state.trophees;
+  if(e.key==='+'||e.key==='ArrowUp'){ S.obtenus=Math.min(S.obtenus+1,S.total); commit(); }
+  if(e.key==='-'||e.key==='ArrowDown'){ S.obtenus=Math.max(S.obtenus-1,0); commit(); } });
+const ctrl=document.getElementById('ctrl'); let hideT;
+function wake(){ ctrl.classList.add('show'); clearTimeout(hideT); hideT=setTimeout(()=>ctrl.classList.remove('show'),3500); }
+document.addEventListener('mousemove', wake); document.addEventListener('click', wake);
+
+/* =========================================================================
+   API DE TEST + DÉMARRAGE
+   ========================================================================= */
+function fit(){ const s=Math.min(window.innerWidth/1920, window.innerHeight/1080); document.getElementById('stage').style.transform=`translate(-50%,-50%) scale(${s})`; }
+window.addEventListener('resize', fit);
+window.setJeu=(n)=> changerJeu(n);
+window.setTrophees=(o,t)=>{ state.trophees.obtenus=o; if(t!==undefined) state.trophees.total=t; commit(); };
+window.setObjectif=(a)=>{ objectif.actuel=a; saveObjectif(); renderGoal(); };
+window.addSoutien=(nom,type="sub",n=1)=> pushSoutien(nom, formatTag(type,n));
+window.clearSoutiens=()=>{ feed=[]; saveFeed(); renderFeed(); };
+/* pour tester les animations sans Streamlabs : tape ça dans la console */
+window.testFollow=(n='NEOxWOLF')=> handleEvent('follow',{name:n});
+window.testSub=(n='KALYA_TV')=> handleEvent('subscription',{name:n,sub_type:'sub'});
+window.testGift=(n='DARKMES',a=5)=> handleEvent('subscription',{gifter:n,sub_type:'submysterygift',amount:a});
+window.testDon=(n='LUNA',a='5€')=> handleEvent('donation',{name:n,formatted_amount:a,amount:5});
+window.testRaid=(n='POKIMANE',c=138)=> handleEvent('raid',{name:n,raiders:c});
+window.testBits=(n='XQCOW',a=500)=> handleEvent('bits',{name:n,amount:String(a)});
+window.testTrophee=()=>{ state.trophees.obtenus=Math.min(state.trophees.obtenus+1,state.trophees.total); render(); };
+window.resetHUD=()=>{ ['','_feed','_profils','_obj'].forEach(k=>{ try{ localStorage.removeItem(STORE_KEY+k);}catch(e){} }); state={jeu:{...CONFIG.jeu},trophees:{...CONFIG.trophees}}; feed=[]; profils={}; objectif={actuel:0,actif:CONFIG.objectif.actif}; prevGot=null; applyTheme(state.jeu.nom); render(); syncInputs(); };
+
+applyTheme(state.jeu.nom);
+fit(); render(); syncInputs();
+connectStreamlabs((new URLSearchParams(location.search).get('token'))||CONFIG.streamlabs.token);
+
+/* démo (uniquement si modePreview:true) : montre follow -> sub -> trophée */
+if(CONFIG.modePreview){
+  if(feed.length===0) feed=[ {nom:"RAZBOTT",tag:formatTag('resub',3)}, {nom:"0DLANOR",tag:formatTag('resub',3)}, {nom:"AVENPARKX",tag:formatTag('gift',1)} ];
+  objectif.actuel=3; renderFeed(); renderGoal();
+  setTimeout(()=> testFollow(), 1400);
+  setTimeout(()=> testSub(), 5800);
+  setTimeout(()=> testRaid(), 10200);
+  setTimeout(()=> testBits(), 14600);
+  setTimeout(()=> testTrophee(), 19000);
+}
+
+/* ===== synchronisation inter-pages (état partagé) ===== */
+(function(){
+  var SKEY='hud_shared_v1', lv=0; var bc=null; try{bc=new BroadcastChannel('hud-claynor');}catch(e){}
+  function rd(){ try{var r=localStorage.getItem(SKEY);return r?JSON.parse(r):null;}catch(e){return null;} }
+  function pub(){ try{ var s=rd()||{}; s.jeu=state.jeu.nom; s.accent=accentFor(state.jeu.nom); s.trophees={obtenus:state.trophees.obtenus,total:state.trophees.total}; s.v=Date.now(); lv=s.v; localStorage.setItem(SKEY,JSON.stringify(s)); bc&&bc.postMessage({kind:'state',s}); }catch(e){} }
+  function ap(s){ if(!s) return; try{ if(s.jeu!==undefined) state.jeu.nom=s.jeu; if(s.trophees){ state.trophees.obtenus=s.trophees.obtenus; state.trophees.total=s.trophees.total; } var acc=s.accent||accentFor(state.jeu.nom)||'#2de2e6'; document.documentElement.style.setProperty('--cyan',acc); document.documentElement.style.setProperty('--cyan-deep',shade(acc,-0.4)); prevGot=state.trophees.obtenus; if(typeof render==='function') render(); if(typeof syncInputs==='function') syncInputs(); }catch(e){} }
+  window.__pubShared=pub;
+  var init=rd(); if(init){ lv=init.v||0; ap(init); }
+  if(bc) bc.addEventListener('message',function(ev){ if(ev.data&&ev.data.kind==='state'){ lv=Math.max(lv,ev.data.s.v||0); ap(ev.data.s); } });
+  setInterval(function(){ var s=rd(); if(s&&(s.v||0)>lv){ lv=s.v; ap(s); } },400);
+})();
+</script>
+</body>
+</html>

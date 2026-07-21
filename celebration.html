@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Célébration trophée</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{ --cyan:#2de2e6; --cyan-deep:#0fa3b1; --gold:#f5c542; --gold-deep:#c8951f; --ink:#eaf6f7; --ink-dim:#6f858c; --line:rgba(45,226,230,.28); --tc:#f5c542; }
+  *{ margin:0; padding:0; box-sizing:border-box; }
+  html,body{ width:100%; height:100%; overflow:hidden; background:transparent; font-family:'Rajdhani',sans-serif; color:var(--ink); }
+
+  #cel{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; opacity:0; overflow:hidden; }
+  #cel.show{ animation:celShow .3s ease forwards, celHide .7s ease 3.7s forwards; }
+  .burst{ position:absolute; width:1000px; height:1000px; border-radius:50%; background:radial-gradient(circle, rgba(245,197,66,.30) 0%, rgba(245,197,66,.10) 34%, transparent 62%); transform:scale(.2); opacity:0; }
+  #cel.show .burst{ animation:burst 1.6s ease forwards; }
+  .ring{ position:absolute; width:360px; height:360px; border:2px solid rgba(245,197,66,.6); border-radius:50%; opacity:0; }
+  #cel.show .ring{ animation:ring 1.2s ease .05s forwards; }
+  .card{ position:relative; display:flex; flex-direction:column; align-items:center; gap:16px; transform:scale(.7); z-index:2; }
+  #cel.show .card{ animation:cardIn .6s cubic-bezier(.2,1.4,.3,1) forwards; }
+  .cico{ width:120px; height:120px; color:var(--gold); filter:drop-shadow(0 0 34px rgba(245,197,66,.75)); }
+  .cico svg{ width:100%; height:100%; }
+  .ctitle{ font-family:'Chakra Petch'; font-weight:700; font-size:60px; letter-spacing:.12em; color:var(--gold); text-transform:uppercase; text-shadow:0 0 40px rgba(245,197,66,.55); }
+  .csub{ font-family:'Chakra Petch'; font-weight:700; font-size:30px; letter-spacing:.08em; color:var(--ink); }
+  .csub b{ color:var(--gold); }
+  .spark{ position:absolute; width:11px; height:11px; border-radius:2px; background:var(--gold); box-shadow:0 0 12px var(--gold); }
+  @keyframes celShow{ to{opacity:1;} } @keyframes celHide{ to{opacity:0;} }
+  @keyframes burst{ 0%{transform:scale(.2);opacity:0;} 30%{opacity:1;} 100%{transform:scale(1.25);opacity:0;} }
+  @keyframes ring{ 0%{transform:scale(.4);opacity:.9;} 100%{transform:scale(1.7);opacity:0;} }
+  @keyframes cardIn{ to{transform:scale(1);} }
+
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:.25;}}
+@keyframes slideIn{to{opacity:1;transform:translateX(0);}}
+@keyframes pop{0%{transform:scale(1);}35%{transform:scale(1.5);filter:drop-shadow(0 0 16px var(--gold));}100%{transform:scale(1);}}
+@keyframes toastIn{to{opacity:1;transform:translateX(-50%) scale(1);}}
+@keyframes toastOut{to{opacity:0;transform:translateX(-50%) scale(.92) translateY(-8px);}}
+@keyframes shine{to{transform:translateX(120%);}}
+</style>
+</head>
+<body>
+<div id="cel"><div class="burst"></div><div class="ring"></div><div class="card"><span class="cico"></span><div class="ctitle">Trophée débloqué</div><div class="csub" id="csub">4 / 41 · <b>10 %</b></div></div></div>
+<script>
+
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function shade(hex,amt){const n=parseInt(hex.slice(1),16);let r=(n>>16)&255,g=(n>>8)&255,b=n&255;const f=amt<0?0:255,t=Math.abs(amt);r=Math.round((f-r)*t+r);g=Math.round((f-g)*t+g);b=Math.round((f-b)*t+b);return '#'+((1<<24)+(r<<16)+(g<<8)+b).toString(16).slice(1);}
+function applyTheme(a){document.documentElement.style.setProperty('--cyan',a);document.documentElement.style.setProperty('--cyan-deep',shade(a,-0.4));}
+function accent(){return getComputedStyle(document.documentElement).getPropertyValue('--cyan').trim()||'#2de2e6';}
+
+const SKEY='hud_shared_v1';
+let bcHud=null; try{ bcHud=new BroadcastChannel('hud-claynor'); }catch(e){}
+function readShared(){ try{ const r=localStorage.getItem(SKEY); return r?JSON.parse(r):null; }catch(e){ return null; } }
+function writeShared(patch){ let s=readShared()||{}; Object.assign(s,patch); s.v=Date.now(); try{ localStorage.setItem(SKEY,JSON.stringify(s)); }catch(e){} try{ bcHud&&bcHud.postMessage({kind:'state',s}); }catch(e){} return s; }
+function subscribeHud(h){ if(bcHud) bcHud.onmessage=function(ev){ var d=ev.data; if(!d) return; if(d.kind==='state'&&h.state) h.state(d.s); if(d.kind==='trophy'&&h.trophy) h.trophy(d); }; if(h.state){ var lv=0; var c=readShared(); if(c) lv=c.v||0; setInterval(function(){ var s=readShared(); if(s&&(s.v||0)>lv){ lv=s.v; h.state(s); } },400); } if(h.trophy){ var lt=0; try{ var r0=localStorage.getItem('hud_celebrate'); if(r0) lt=JSON.parse(r0).ts||0; }catch(e){} setInterval(function(){ try{ var r=localStorage.getItem('hud_celebrate'); if(r){ var p=JSON.parse(r); if(p.ts&&p.ts>lt){ lt=p.ts; h.trophy(p); } } }catch(e){} },300); } }
+function tokenUrl(fb){ try{ return new URLSearchParams(location.search).get('token') || fb || ''; }catch(e){ return fb||''; } }
+
+const CONFIG={ demo:true, son:true };
+document.querySelector('.cico').innerHTML=`<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 4V3h10v1h4v3a4 4 0 0 1-4 4h-.3A5 5 0 0 1 13 13.9V16h3v2H8v-2h3v-2.1A5 5 0 0 1 7.3 11H7a4 4 0 0 1-4-4V4h4zm0 2H5v1a2 2 0 0 0 2 2V6zm10 0v3a2 2 0 0 0 2-2V6h-2z"/></svg>`;
+let actx;
+function ding(){ if(!CONFIG.son) return; try{ actx=actx||new (window.AudioContext||window.webkitAudioContext)(); if(actx.state==='suspended') actx.resume(); const now=actx.currentTime; [[784,0],[1175,0.11],[1568,0.22]].forEach(([f,dt])=>{ const o=actx.createOscillator(),g=actx.createGain(); o.type='triangle'; o.frequency.value=f; g.gain.setValueAtTime(0.0001,now+dt); g.gain.exponentialRampToValueAtTime(0.2,now+dt+0.02); g.gain.exponentialRampToValueAtTime(0.0001,now+dt+0.55); o.connect(g).connect(actx.destination); o.start(now+dt); o.stop(now+dt+0.6); }); }catch(e){} }
+function sparks(){ const cel=document.getElementById('cel'); cel.querySelectorAll('.spark').forEach(s=>s.remove()); const cx=cel.offsetWidth/2, cy=cel.offsetHeight/2; for(let i=0;i<16;i++){ const s=document.createElement('span'); s.className='spark'; s.style.left=cx+'px'; s.style.top=cy+'px'; cel.appendChild(s); const ang=Math.random()*Math.PI*2, dist=220+Math.random()*260, dx=Math.cos(ang)*dist, dy=Math.sin(ang)*dist; s.animate([{transform:'translate(-50%,-50%) scale(1) rotate(0deg)',opacity:1},{transform:'translate(calc(-50% + '+dx+'px), calc(-50% + '+dy+'px)) scale(0) rotate(180deg)',opacity:0}],{duration:900+Math.random()*600,easing:'cubic-bezier(.2,.7,.2,1)'}); setTimeout(()=>s.remove(),1600); } }
+function celebrate(got,total){ const pct=total?Math.round(got/total*100):0; document.getElementById('csub').innerHTML=got+' / '+total+' · <b>'+pct+' %</b>'; sparks(); const c=document.getElementById('cel'); c.classList.remove('show'); void c.offsetWidth; c.classList.add('show'); ding(); }
+subscribeHud({ trophy:function(p){ celebrate(p.got,p.total); } });
+window.testCelebrate=(g=4,t=41)=>celebrate(g,t);
+if(CONFIG.demo){ setTimeout(()=>celebrate(4,41),1500); }
+
+</script>
+</body>
+</html>

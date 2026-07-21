@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Overlay Claynor — Configuration</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{ --cyan:#2de2e6; --cyan-deep:#0fa3b1; --gold:#f5c542; --ink:#eaf6f7; --ink-dim:#6f858c; --line:rgba(45,226,230,.28); }
+  *{ margin:0; padding:0; box-sizing:border-box; }
+  body{ min-height:100vh; font-family:'Rajdhani',sans-serif; color:var(--ink); background:radial-gradient(130% 120% at 25% -5%, #101d24 0%, #0a1015 48%, #05090c 100%); padding:40px 20px 60px; }
+  .wrap{ max-width:860px; margin:0 auto; }
+  h1{ font-family:'Chakra Petch'; font-weight:700; font-size:34px; letter-spacing:.05em; text-transform:uppercase; }
+  h1 span{ color:var(--cyan); text-shadow:0 0 20px rgba(45,226,230,.4); }
+  .sub{ color:var(--ink-dim); letter-spacing:.06em; margin:6px 0 26px; }
+  .card{ background:linear-gradient(105deg, rgba(11,17,21,.9), rgba(9,14,18,.8)); border:1px solid var(--line); border-radius:12px; padding:20px 22px; margin-bottom:18px; }
+  .card h2{ font-family:'Chakra Petch'; font-weight:700; font-size:14px; letter-spacing:.24em; color:var(--cyan); text-transform:uppercase; margin-bottom:14px; }
+  label{ display:block; font-weight:700; font-size:12px; letter-spacing:.14em; color:var(--ink-dim); text-transform:uppercase; margin-bottom:7px; }
+  input.tok{ width:100%; height:44px; padding:0 14px; font-family:'Rajdhani'; font-weight:600; font-size:15px; color:var(--ink); background:rgba(255,255,255,.05); border:1px solid var(--line); border-radius:8px; }
+  input.tok:focus{ outline:none; border-color:var(--cyan); }
+  .note{ font-size:13px; color:var(--ink-dim); margin-top:9px; line-height:1.5; }
+  .note b{ color:var(--gold); }
+  .row{ display:flex; align-items:center; gap:12px; padding:11px 0; border-bottom:1px solid rgba(45,226,230,.10); }
+  .row:last-child{ border-bottom:none; }
+  .rn{ width:210px; flex:0 0 auto; }
+  .rn .t{ font-family:'Chakra Petch'; font-weight:700; font-size:15px; letter-spacing:.03em; }
+  .rn .s{ font-size:12px; color:var(--ink-dim); letter-spacing:.08em; }
+  .url{ flex:1; height:38px; padding:0 12px; font-family:'Rajdhani'; font-weight:600; font-size:13px; color:var(--cyan); background:rgba(45,226,230,.06); border:1px solid var(--line); border-radius:7px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  button{ height:38px; padding:0 16px; cursor:pointer; font-family:'Chakra Petch'; font-weight:700; font-size:12px; letter-spacing:.1em; color:#04252a; background:var(--cyan); border:none; border-radius:7px; text-transform:uppercase; transition:.12s; }
+  button:hover{ filter:brightness(1.12); }
+  button.ghost{ background:transparent; color:var(--cyan); border:1px solid var(--line); }
+  .sec-title{ font-family:'Chakra Petch'; font-weight:600; font-size:11px; letter-spacing:.2em; color:var(--ink-dim); text-transform:uppercase; margin:16px 0 4px; }
+  .steps{ line-height:1.7; }
+  .steps li{ margin-bottom:6px; }
+  code{ background:rgba(45,226,230,.1); padding:1px 6px; border-radius:4px; font-family:'Rajdhani'; color:var(--cyan); }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Overlay <span>Claynor</span></h1>
+    <div class="sub">Configuration — génère tes URL OBS toutes prêtes.</div>
+
+    <div class="card">
+      <h2>1 · Ton token Streamlabs</h2>
+      <label>Socket API Token</label>
+      <input class="tok" id="tok" type="text" placeholder="Colle ton Socket API Token ici" autocomplete="off">
+      <div class="note">Il n'est <b>jamais enregistré dans le dépôt</b> : il n'est ajouté qu'aux URL ci-dessous, chez toi. Streamlabs → Settings → API Settings → API Tokens → Socket API Token.</div>
+    </div>
+
+    <div class="card">
+      <h2>2 · Tes sources OBS</h2>
+      <div class="sec-title">Widgets (interface reliée — change de jeu et tout se recolore)</div>
+      <div id="widgets"></div>
+      <div class="sec-title">Scènes tout-en-un</div>
+      <div id="scenes"></div>
+      <div class="note">Pour chaque source Navigateur dans OBS : « URL » = colle l'adresse copiée ; mets la <b>taille</b> indiquée. « Copier » met l'URL dans le presse-papiers ; « Ouvrir » l'affiche dans un onglet pour vérifier.</div>
+    </div>
+
+    <div class="card">
+      <h2>3 · Ordre des sources dans OBS</h2>
+      <ol class="steps">
+        <li><code>celebration</code> tout en haut (plein écran, invisible au repos)</li>
+        <li><code>alertes</code>, puis tes widgets (<code>jeu-trophees</code>, <code>soutiens</code>, <code>objectif</code>, <code>camera</code>)</li>
+        <li>Ta <b>webcam</b> juste sous le widget <code>camera</code>, calée dans le cadre</li>
+        <li>La <b>capture du jeu</b> tout en bas</li>
+      </ol>
+      <div class="note">Change de jeu via clic droit sur <code>jeu-trophees</code> → Interagir → champ « Jeu » → OK. Toute l'interface se recolore instantanément.</div>
+    </div>
+  </div>
+
+<script>
+  const WIDGETS=[
+    {n:"Caméra", f:"camera.html", s:"360 × 203", tok:false},
+    {n:"Jeu & trophées", f:"jeu-trophees.html", s:"360 × 230", tok:false},
+    {n:"Derniers soutiens", f:"soutiens.html", s:"320 × 180", tok:true},
+    {n:"Objectif", f:"objectif.html", s:"280 × 200", tok:true},
+    {n:"Alertes", f:"alertes.html", s:"600 × 150", tok:true},
+    {n:"Célébration trophée", f:"celebration.html", s:"1920 × 1080", tok:false}
+  ];
+  const SCENES=[
+    {n:"Just Chatting", f:"scenes/just-chatting.html", s:"1920 × 1080", tok:true},
+    {n:"Début de stream", f:"scenes/debut-stream.html", s:"1920 × 1080", tok:true},
+    {n:"Fin de stream", f:"scenes/fin-stream.html", s:"1920 × 1080", tok:true},
+    {n:"Jeu (tout-en-un)", f:"scenes/overlay-jeu.html", s:"1920 × 1080", tok:true}
+  ];
+  const base = location.origin + location.pathname.replace(/[^/]*$/,'');
+  function mkUrl(w){ const tk=document.getElementById('tok').value.trim(); return base + w.f + (w.tok && tk ? '?token='+encodeURIComponent(tk) : ''); }
+  function rowEl(w){
+    const r=document.createElement('div'); r.className='row';
+    r.innerHTML='<div class="rn"><div class="t">'+w.n+'</div><div class="s">'+w.s+(w.tok?' · token':'')+'</div></div>'+
+                '<div class="url"></div>'+
+                '<button class="copy">Copier</button><button class="ghost open">Ouvrir</button>';
+    const urlEl=r.querySelector('.url');
+    function refresh(){ urlEl.textContent=mkUrl(w); }
+    r.querySelector('.copy').onclick=()=>{ const u=mkUrl(w); navigator.clipboard.writeText(u).then(()=>{ const b=r.querySelector('.copy'); b.textContent='Copié !'; setTimeout(()=>b.textContent='Copier',1200); }); };
+    r.querySelector('.open').onclick=()=> window.open(mkUrl(w),'_blank');
+    r._refresh=refresh; refresh();
+    return r;
+  }
+  const wc=document.getElementById('widgets'), sc=document.getElementById('scenes');
+  const rows=[];
+  WIDGETS.forEach(w=>{ const r=rowEl(w); wc.appendChild(r); rows.push(r); });
+  SCENES.forEach(w=>{ const r=rowEl(w); sc.appendChild(r); rows.push(r); });
+  document.getElementById('tok').addEventListener('input',()=> rows.forEach(r=>r._refresh()));
+</script>
+</body>
+</html>
