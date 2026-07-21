@@ -94,7 +94,7 @@ function loadP(){ try{const r=localStorage.getItem(K+'_p');return r?JSON.parse(r
 function saveP(){ try{localStorage.setItem(K+'_p',JSON.stringify(profils));}catch(e){} }
 function pop(el){ el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop'); }
 function countUp(node,t,d){const s=performance.now();(function f(n){const p=Math.min((n-s)/d,1);node.textContent=Math.round((1-Math.pow(1-p,3))*t);if(p<1)requestAnimationFrame(f);})(performance.now());}
-function publish(){ writeShared({ jeu:state.jeu.nom, accent:accentFor(state.jeu.nom), trophees:{obtenus:state.trophees.obtenus,total:state.trophees.total} }); }
+function publish(){ writeShared({ jeu:state.jeu.nom, accent:accentFor(state.jeu.nom), trophees:{obtenus:state.trophees.obtenus,total:state.trophees.total} }); try{ window.__pubRemoteState&&window.__pubRemoteState(); }catch(e){} }
 function fireCelebrate(){ const p={got:state.trophees.obtenus,total:state.trophees.total,ts:Date.now()}; try{ bcHud&&bcHud.postMessage(Object.assign({kind:'trophy'},p)); }catch(e){} try{ localStorage.setItem('hud_celebrate',JSON.stringify(p)); }catch(e){} }
 function render(){
   document.getElementById('gameName').textContent=state.jeu.nom;
@@ -125,6 +125,30 @@ function wake(){ if(!ctrl) return; ctrl.classList.add('show'); clearTimeout(hide
 document.addEventListener('mousemove', wake); document.addEventListener('click', wake);
 
 applyTheme(accentFor(state.jeu.nom)); render(); sync(); publish();
+
+
+/* ===== TÉLÉCOMMANDE (téléphone) via relais MQTT public =====
+   Le "room" doit être IDENTIQUE dans controle.html. Change-le pour un code à toi. */
+const REMOTE={ actif:true, room:"claynor-hud-x7k2", broker:"wss://broker.hivemq.com:8884/mqtt" };
+(function(){
+  if(!REMOTE.actif) return;
+  var sc=document.createElement('script'); sc.src='https://unpkg.com/mqtt/dist/mqtt.min.js';
+  sc.onload=function(){ try{
+    var TA='claynor/'+REMOTE.room+'/action', TS='claynor/'+REMOTE.room+'/state';
+    var cli=mqtt.connect(REMOTE.broker,{reconnectPeriod:3000});
+    window.__pubRemoteState=function(){ try{ cli.publish(TS, JSON.stringify({jeu:state.jeu.nom,got:state.trophees.obtenus,total:state.trophees.total}), {retain:true}); }catch(e){} };
+    cli.on('connect',function(){ cli.subscribe(TA); window.__pubRemoteState(); });
+    cli.on('message',function(t,payload){ var m; try{ m=JSON.parse(payload.toString()); }catch(e){ return; } var S=state.trophees;
+      if(m.a==='tp'){ S.obtenus=Math.min(S.obtenus+1,S.total); commit(); }
+      else if(m.a==='tm'){ S.obtenus=Math.max(S.obtenus-1,0); commit(); }
+      else if(m.a==='op'){ S.total++; commit(); }
+      else if(m.a==='om'){ S.total=Math.max(S.total-1,S.obtenus); commit(); }
+      else if(m.a==='set'&&typeof m.n==='number'){ S.obtenus=Math.max(0,Math.min(m.n,S.total)); commit(); }
+      else if(m.a==='game'&&m.g){ changeGame(m.g); }
+    });
+  }catch(e){ console.warn('remote',e); } };
+  document.head.appendChild(sc);
+})();
 
 </script>
 </body>
