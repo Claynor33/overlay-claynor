@@ -11,7 +11,7 @@
   :root{
     --bg-panel:#0a0f13; --cyan:#2de2e6; --cyan-deep:#0fa3b1;
     --gold:#f5c542; --gold-deep:#c8951f; --ink:#eaf6f7; --ink-dim:#6f858c;
-    --line:rgba(45,226,230,.28); --tc:#f5c542;
+    --line:rgba(45,226,230,.28); --glow:rgba(205,127,50,.45); --tc:#f5c542;
   }
   *{ margin:0; padding:0; box-sizing:border-box; }
   html,body{ width:100%; height:100%; overflow:hidden; background:transparent; }
@@ -47,7 +47,7 @@
   .goal-bar{ position:relative; height:6px; background:rgba(255,255,255,.06); border-radius:2px; overflow:hidden; }
   .goal-bar-fill{ position:absolute; left:0; top:0; bottom:0; width:0; background:linear-gradient(90deg,var(--cyan-deep),var(--cyan)); box-shadow:0 0 10px var(--cyan); border-radius:2px; transition:width 1s cubic-bezier(.2,.8,.2,1); }
   .goal.done .goal-count{ color:var(--gold); }
-  .goal.done .goal-bar-fill{ background:linear-gradient(90deg,var(--gold-deep),var(--gold)); box-shadow:0 0 12px rgba(245,197,66,.7); }
+  .goal.done .goal-bar-fill{ background:linear-gradient(90deg,var(--gold-deep),var(--gold)); box-shadow:0 0 12px var(--glow); }
 
   /* =================== DOCK GAUCHE : CAMÉRA + JEU/TROPHÉES =================== */
   .dock{ position:absolute; left:40px; bottom:40px; width:360px; }
@@ -75,14 +75,15 @@
   .bar-div{ width:1px; align-self:stretch; margin:12px 0; background:linear-gradient(var(--line),transparent); z-index:2; }
   .bar-trophy{ position:relative; display:flex; flex-direction:column; align-items:flex-end; justify-content:center; gap:3px; padding:0 16px 0 14px; z-index:2; }
   .trophy-main{ display:flex; align-items:center; gap:9px; }
-  .trophy-ico{ width:26px; height:26px; filter:drop-shadow(0 0 7px rgba(245,197,66,.5)); }
+  .trophy-ico{ width:26px; height:26px; filter:drop-shadow(0 0 7px var(--glow)); transition:filter .4s ease; }
+  .trophy-ico .lt{ fill:var(--gold); stroke:var(--gold); } .trophy-ico .dk{ fill:var(--gold-deep); }
   .trophy-count{ display:flex; align-items:baseline; gap:3px; font-family:'Chakra Petch'; font-weight:700; }
-  .trophy-count .got{ font-size:25px; color:var(--gold); line-height:1; text-shadow:0 0 14px rgba(245,197,66,.35); transition:transform .25s ease; }
+  .trophy-count .got{ font-size:25px; color:var(--gold); line-height:1; text-shadow:0 0 14px var(--glow); transition:transform .25s ease, color .4s ease; }
   .trophy-count .got.pop{ animation:pop .55s cubic-bezier(.2,1.4,.3,1); }
   .trophy-count .slash{ font-size:16px; color:var(--ink-dim); } .trophy-count .tot{ font-size:16px; color:var(--ink-dim); }
-  .trophy-pct{ font-family:'Rajdhani'; font-weight:700; font-size:12px; letter-spacing:.16em; color:var(--gold); text-shadow:0 0 10px rgba(245,197,66,.3); }
+  .trophy-pct{ font-family:'Rajdhani'; font-weight:700; font-size:12px; letter-spacing:.16em; color:var(--gold); text-shadow:0 0 10px var(--glow); transition:color .4s ease; }
   .bar-progress{ position:absolute; left:0; right:0; bottom:0; height:3px; background:rgba(255,255,255,.06); z-index:3; }
-  .bar-progress-fill{ position:absolute; left:0; top:0; bottom:0; width:0; background:linear-gradient(90deg,var(--gold-deep),var(--gold)); box-shadow:0 0 10px rgba(245,197,66,.6); transition:width 1.1s cubic-bezier(.2,.8,.2,1); }
+  .bar-progress-fill{ position:absolute; left:0; top:0; bottom:0; width:0; background:linear-gradient(90deg,var(--gold-deep),var(--gold)); box-shadow:0 0 10px var(--glow); transition:width 1.1s cubic-bezier(.2,.8,.2,1), background .4s ease; }
 
   /* =================== ALERTE (trophée / follow / sub…) =================== */
   #toast{ position:absolute; top:130px; left:50%; z-index:60; display:flex; align-items:center; gap:15px; padding:15px 30px;
@@ -116,7 +117,12 @@
   #ctrl input:focus{ outline:none; border-color:var(--cyan); }
   #ctrl .hint{ font-size:10px; letter-spacing:.06em; color:var(--ink-dim); text-align:center; margin-top:2px; }
 
-  @keyframes blink{ 0%,100%{opacity:1;} 50%{opacity:.25;} }
+  
+  /* --- nom de jeu : ajustement automatique --- */
+  .game-name>span{ display:inline-block; will-change:transform; }
+  .game-name.scroll>span{ animation:marq var(--md,9s) ease-in-out infinite; }
+  @keyframes marq{ 0%,14%{transform:translateX(0)} 50%,64%{transform:translateX(var(--mx,0))} 100%{transform:translateX(0)} }
+@keyframes blink{ 0%,100%{opacity:1;} 50%{opacity:.25;} }
   @keyframes slideIn{ to{ opacity:1; transform:translateX(0);} }
   @keyframes hudIn{ to{ opacity:1; transform:translateY(0);} }
   @keyframes sweep{ 0%{transform:translateX(-100%);} 18%,100%{transform:translateX(100%);} }
@@ -150,7 +156,7 @@
       <div class="bar">
         <div class="bar-game">
           <div class="eyebrow"><span class="live"></span>En cours</div>
-          <div class="game-name" id="gameName">CRYSIS</div>
+          <div class="game-name" id="gameName"><span>CRYSIS</span></div>
         </div>
         <div class="bar-div"></div>
         <div class="bar-trophy">
@@ -246,12 +252,65 @@ function gold(){ return getComputedStyle(document.documentElement).getPropertyVa
    RENDU
    ========================================================================= */
 let prevGot = null;
+
+/* ===== PALIERS (identiques aux widgets) ===== */
+const TIERS=[
+  { id:"bronze",  nom:"Bronze",  max:25,  c:"#cd7f32", d:"#7d4a1c", glow:"rgba(205,127,50,.45)" },
+  { id:"argent",  nom:"Argent",  max:50,  c:"#c9d4de", d:"#7d8a97", glow:"rgba(201,212,222,.45)" },
+  { id:"or",      nom:"Or",      max:75,  c:"#f5c542", d:"#c8951f", glow:"rgba(245,197,66,.45)" },
+  { id:"diamant", nom:"Diamant", max:100, c:"#b9f2ff", d:"#4fa9c4", glow:"rgba(185,242,255,.5)"  },
+  { id:"platine", nom:"Platine", max:101, c:"#e8f4ff", d:"#9fb4c6", glow:"rgba(232,244,255,.55)" }
+];
+function setAccentColor(a){ document.documentElement.style.setProperty('--cyan', a); document.documentElement.style.setProperty('--cyan-deep', shade(a,-0.4)); }
+function tierFor(pct, complet){ if(complet) return TIERS[4]; for(const t of TIERS){ if(pct < t.max) return t; } return TIERS[3]; }
+function applyTier(got,total){
+  const exact = total?(got/total*100):0, t = tierFor(exact, total>0 && got>=total);
+  const rs=document.documentElement.style;
+  rs.setProperty('--gold',t.c); rs.setProperty('--gold-deep',t.d); rs.setProperty('--glow',t.glow);
+  return t;
+}
+/* "palier" = toute la DA suit les paliers · "jeu" = couleur par jeu */
+const THEME_GLOBAL="palier";
+function accentGlobal(){
+  if(THEME_GLOBAL==="palier"){
+    const S=state.trophees, e=S.total?(S.obtenus/S.total*100):0;
+    return tierFor(e, S.total>0 && S.obtenus>=S.total).c;
+  }
+  return accentFor(state.jeu.nom);
+}
+
+/* ===== nom de jeu trop long : réduction auto, puis défilement ===== */
+const NOM_LONG={
+  mode:"reduire",     // "reduire" (rétrécit) · "defiler" (fait défiler) · "couper" (…)
+  tailleMin:15,       // taille de police minimale en px
+  affichage:{}        // noms courts perso, ex: {"KINGDOM COME: DELIVERANCE":"Kingdom Come"}
+};
+function nomAffiche(n){ return NOM_LONG.affichage[n] || n; }
+function fitNom(){
+  const box=document.getElementById('gameName'); if(!box) return;
+  const inner=box.firstElementChild; if(!inner) return;
+  box.classList.remove('scroll'); inner.style.transform=''; box.style.fontSize='';
+  if(NOM_LONG.mode==='couper') return;
+  const base=parseFloat(getComputedStyle(box).fontSize)||24;
+  let size=base, guard=0;
+  while(inner.scrollWidth>box.clientWidth && size>NOM_LONG.tailleMin && guard++<40){ size-=1; box.style.fontSize=size+'px'; }
+  if(inner.scrollWidth>box.clientWidth+1 && NOM_LONG.mode==='defiler'){
+    const over=inner.scrollWidth-box.clientWidth+2;
+    box.style.setProperty('--mx', (-over)+'px');
+    box.style.setProperty('--md', Math.max(7, over/22+6).toFixed(1)+'s');
+    box.classList.add('scroll');
+  }
+}
+try{ if(document.fonts&&document.fonts.ready) document.fonts.ready.then(()=>fitNom()); }catch(e){}
+window.addEventListener('resize', fitNom);
 function render(){
   document.body.classList.toggle('preview', CONFIG.modePreview);
   document.getElementById('camLabel').textContent = CONFIG.cam.label;
-  document.getElementById('gameName').textContent = state.jeu.nom;
+  document.getElementById('gameName').firstElementChild.textContent = nomAffiche(state.jeu.nom);
+  requestAnimationFrame(fitNom);
   const got=state.trophees.obtenus, tot=state.trophees.total, gotEl=document.getElementById('tGot');
   document.getElementById('tTot').textContent = tot;
+  applyTier(got,tot); setAccentColor(accentGlobal());
   const pct = tot ? Math.round((got/tot)*100) : 0;
   document.getElementById('tPct').textContent = pct+' %';
   requestAnimationFrame(()=> document.getElementById('tBar').style.width = pct+'%');
@@ -368,7 +427,7 @@ function changerJeu(nouveau){
   const p = profils[nouveau] || { obtenus:0, total:CONFIG.trophees.total };
   state.jeu.nom=nouveau; state.trophees.obtenus=p.obtenus; state.trophees.total=p.total;
   profils[nouveau]={obtenus:p.obtenus,total:p.total}; saveProfils(); save();
-  applyTheme(nouveau); prevGot=state.trophees.obtenus; render(); syncInputs(); window.__pubShared&&window.__pubShared();
+  prevGot=state.trophees.obtenus; render(); syncInputs(); window.__pubShared&&window.__pubShared();
 }
 
 /* =========================================================================
@@ -412,9 +471,8 @@ window.testDon=(n='LUNA',a='5€')=> handleEvent('donation',{name:n,formatted_am
 window.testRaid=(n='POKIMANE',c=138)=> handleEvent('raid',{name:n,raiders:c});
 window.testBits=(n='XQCOW',a=500)=> handleEvent('bits',{name:n,amount:String(a)});
 window.testTrophee=()=>{ state.trophees.obtenus=Math.min(state.trophees.obtenus+1,state.trophees.total); render(); };
-window.resetHUD=()=>{ ['','_feed','_profils','_obj'].forEach(k=>{ try{ localStorage.removeItem(STORE_KEY+k);}catch(e){} }); state={jeu:{...CONFIG.jeu},trophees:{...CONFIG.trophees}}; feed=[]; profils={}; objectif={actuel:0,actif:CONFIG.objectif.actif}; prevGot=null; applyTheme(state.jeu.nom); render(); syncInputs(); };
+window.resetHUD=()=>{ ['','_feed','_profils','_obj'].forEach(k=>{ try{ localStorage.removeItem(STORE_KEY+k);}catch(e){} }); state={jeu:{...CONFIG.jeu},trophees:{...CONFIG.trophees}}; feed=[]; profils={}; objectif={actuel:0,actif:CONFIG.objectif.actif}; prevGot=null; render(); syncInputs(); };
 
-applyTheme(state.jeu.nom);
 fit(); render(); syncInputs();
 connectStreamlabs((new URLSearchParams(location.search).get('token'))||CONFIG.streamlabs.token);
 
@@ -433,8 +491,8 @@ if(CONFIG.modePreview){
 (function(){
   var SKEY='hud_shared_v1', lv=0; var bc=null; try{bc=new BroadcastChannel('hud-claynor');}catch(e){}
   function rd(){ try{var r=localStorage.getItem(SKEY);return r?JSON.parse(r):null;}catch(e){return null;} }
-  function pub(){ try{ var s=rd()||{}; s.jeu=state.jeu.nom; s.accent=accentFor(state.jeu.nom); s.trophees={obtenus:state.trophees.obtenus,total:state.trophees.total}; s.v=Date.now(); lv=s.v; localStorage.setItem(SKEY,JSON.stringify(s)); bc&&bc.postMessage({kind:'state',s}); }catch(e){} }
-  function ap(s){ if(!s) return; try{ if(s.jeu!==undefined) state.jeu.nom=s.jeu; if(s.trophees){ state.trophees.obtenus=s.trophees.obtenus; state.trophees.total=s.trophees.total; } var acc=s.accent||accentFor(state.jeu.nom)||'#2de2e6'; document.documentElement.style.setProperty('--cyan',acc); document.documentElement.style.setProperty('--cyan-deep',shade(acc,-0.4)); prevGot=state.trophees.obtenus; if(typeof render==='function') render(); if(typeof syncInputs==='function') syncInputs(); }catch(e){} }
+  function pub(){ try{ var s=rd()||{}; s.jeu=state.jeu.nom; s.accent=accentGlobal(); s.trophees={obtenus:state.trophees.obtenus,total:state.trophees.total}; s.v=Date.now(); lv=s.v; localStorage.setItem(SKEY,JSON.stringify(s)); bc&&bc.postMessage({kind:'state',s}); }catch(e){} }
+  function ap(s){ if(!s) return; try{ if(s.jeu!==undefined) state.jeu.nom=s.jeu; if(s.trophees){ state.trophees.obtenus=s.trophees.obtenus; state.trophees.total=s.trophees.total; } var acc=(typeof accentGlobal==='function')?accentGlobal():(s.accent||accentFor(state.jeu.nom)||'#2de2e6'); document.documentElement.style.setProperty('--cyan',acc); document.documentElement.style.setProperty('--cyan-deep',shade(acc,-0.4)); prevGot=state.trophees.obtenus; if(typeof render==='function') render(); if(typeof syncInputs==='function') syncInputs(); }catch(e){} }
   window.__pubShared=pub;
   var init=rd(); if(init){ lv=init.v||0; ap(init); }
   if(bc) bc.addEventListener('message',function(ev){ if(ev.data&&ev.data.kind==='state'){ lv=Math.max(lv,ev.data.s.v||0); ap(ev.data.s); } });

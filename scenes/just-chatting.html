@@ -131,7 +131,12 @@
   #ctrl input:focus{ outline:none; border-color:var(--cyan); }
   #ctrl .hint{ font-size:10px; letter-spacing:.06em; color:var(--ink-dim); text-align:center; margin-top:2px; }
 
-  @keyframes blink{ 0%,100%{opacity:1;} 50%{opacity:.25;} }
+  
+  /* --- nom de jeu : ajustement automatique --- */
+  .game-name>span{ display:inline-block; will-change:transform; }
+  .game-name.scroll>span{ animation:marq var(--md,9s) ease-in-out infinite; }
+  @keyframes marq{ 0%,14%{transform:translateX(0)} 50%,64%{transform:translateX(var(--mx,0))} 100%{transform:translateX(0)} }
+@keyframes blink{ 0%,100%{opacity:1;} 50%{opacity:.25;} }
   @keyframes slideIn{ to{ opacity:1; transform:translateX(0);} }
   @keyframes hudIn{ to{ opacity:1; transform:translateY(0);} }
   @keyframes sweep{ 0%{transform:translateX(-100%);} 18%,100%{transform:translateX(100%);} }
@@ -167,7 +172,7 @@
         <span class="cam-bracket cb-tl"></span><span class="cam-bracket cb-tr"></span><span class="cam-bracket cb-br"></span><span class="cam-bracket cb-bl"></span>
       </div>
       <div class="bar">
-        <div class="bar-game"><div class="eyebrow"><span class="live"></span>En cours</div><div class="game-name" id="gameName">CRYSIS</div></div>
+        <div class="bar-game"><div class="eyebrow"><span class="live"></span>En cours</div><div class="game-name" id="gameName"><span>CRYSIS</span></div></div>
         <div class="bar-div"></div>
         <div class="bar-trophy">
           <div class="trophy-main">
@@ -286,10 +291,36 @@ function accentGlobal(){
   }
   return accentFor(state.jeu.nom);
 }
+
+/* ===== nom de jeu trop long : réduction auto, puis défilement ===== */
+const NOM_LONG={
+  mode:"reduire",     // "reduire" (rétrécit) · "defiler" (fait défiler) · "couper" (…)
+  tailleMin:15,       // taille de police minimale en px
+  affichage:{}        // noms courts perso, ex: {"KINGDOM COME: DELIVERANCE":"Kingdom Come"}
+};
+function nomAffiche(n){ return NOM_LONG.affichage[n] || n; }
+function fitNom(){
+  const box=document.getElementById('gameName'); if(!box) return;
+  const inner=box.firstElementChild; if(!inner) return;
+  box.classList.remove('scroll'); inner.style.transform=''; box.style.fontSize='';
+  if(NOM_LONG.mode==='couper') return;
+  const base=parseFloat(getComputedStyle(box).fontSize)||24;
+  let size=base, guard=0;
+  while(inner.scrollWidth>box.clientWidth && size>NOM_LONG.tailleMin && guard++<40){ size-=1; box.style.fontSize=size+'px'; }
+  if(inner.scrollWidth>box.clientWidth+1 && NOM_LONG.mode==='defiler'){
+    const over=inner.scrollWidth-box.clientWidth+2;
+    box.style.setProperty('--mx', (-over)+'px');
+    box.style.setProperty('--md', Math.max(7, over/22+6).toFixed(1)+'s');
+    box.classList.add('scroll');
+  }
+}
+try{ if(document.fonts&&document.fonts.ready) document.fonts.ready.then(()=>fitNom()); }catch(e){}
+window.addEventListener('resize', fitNom);
 function render(){
   document.body.classList.toggle('preview', CONFIG.modePreview);
   document.getElementById('camLabel').textContent = CONFIG.cam.label;
-  document.getElementById('gameName').textContent = state.jeu.nom;
+  document.getElementById('gameName').firstElementChild.textContent = nomAffiche(state.jeu.nom);
+  requestAnimationFrame(fitNom);
   const got=state.trophees.obtenus, tot=state.trophees.total, gotEl=document.getElementById('tGot');
   document.getElementById('tTot').textContent = tot;
   applyTier(got,tot); setAccentColor(accentGlobal());
