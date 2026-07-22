@@ -13,7 +13,6 @@
   html,body{ width:100%; height:100%; overflow:hidden; background:transparent; font-family:'Rajdhani',sans-serif; color:var(--ink); }
 
   .chat{ position:absolute; left:0; top:0; width:600px; height:770px; display:flex; flex-direction:column; }
-  .chat::after{ content:''; position:absolute; right:-1px; top:0; bottom:0; width:3px; background:linear-gradient(var(--cyan),var(--cyan-deep)); box-shadow:0 0 12px var(--cyan); }
   .chat-head{ position:relative; display:flex; align-items:center; gap:12px; height:46px; padding:0 20px; font-family:'Chakra Petch'; font-weight:700; font-size:16px; letter-spacing:.34em; color:var(--cyan); text-transform:uppercase; border-bottom:1px solid var(--line); background:linear-gradient(90deg, rgba(10,15,19,.55), rgba(10,15,19,.15)); }
   .chat-head.off{ display:none; }
   .chat-ico{ width:22px; height:22px; color:var(--cyan); display:inline-flex; filter:drop-shadow(0 0 6px var(--cyan)); } .chat-ico svg{ width:100%; height:100%; }
@@ -22,11 +21,6 @@
   .dot{ position:absolute; right:14px; top:12px; width:7px; height:7px; border-radius:50%; background:#ff5d5d; box-shadow:0 0 8px #ff5d5d; opacity:0; transition:opacity .4s; z-index:4; }
   .dot.off{ opacity:.85; }
   .chat-body{ position:relative; flex:1; padding:16px 20px 18px; display:flex; flex-direction:column; justify-content:flex-end; gap:11px; overflow:hidden; }
-  .corner{ position:absolute; width:18px; height:18px; z-index:3; pointer-events:none; }
-  .corner::before,.corner::after{ content:''; position:absolute; background:var(--cyan); box-shadow:0 0 8px var(--cyan); }
-  .corner::before{ width:100%; height:2px; } .corner::after{ width:2px; height:100%; }
-  .c-tr{ top:0; right:0; } .c-tr::before{ top:0; right:0; } .c-tr::after{ top:0; right:0; }
-  .c-br{ bottom:0; right:0; } .c-br::before{ bottom:0; right:0; } .c-br::after{ bottom:0; right:0; }
 
   .msg{ font-family:'Rajdhani'; font-weight:600; font-size:19px; line-height:1.3; opacity:0; transform:translateX(16px); animation:in .42s cubic-bezier(.2,.7,.2,1) forwards; word-wrap:break-word; }
   .msg .u{ font-weight:700; letter-spacing:.02em; margin-right:4px; }
@@ -53,13 +47,13 @@
     </div>
     <span class="dot" id="dot"></span>
     <div class="chat-body"><div id="list"></div></div>
-    <span class="corner c-tr"></span><span class="corner c-br"></span>
   </div>
 
 <script>
 const CONFIG={
   twitch:"claynor",      // ta chaîne Twitch (minuscules)
   entete:false,         // true = réaffiche le bandeau "CHAT" en haut
+  voyant:true,          // petit point rouge si le chat se déconnecte (false = rien du tout)
   max:14,               // nombre de messages affichés
   emotes:true,          // afficher les emotes Twitch
   badges:true,          // afficher MOD / VIP / SUB / STREAMER
@@ -131,7 +125,7 @@ function parseTags(s){ const o={}; (s||'').split(';').forEach(p=>{ const i=p.ind
 
 /* connexion anonyme au chat Twitch (aucun token) */
 let ws, retry=0;
-function setDot(ok){ document.getElementById('dot').classList.toggle('off',!ok); }
+function setDot(ok){ document.getElementById('dot').classList.toggle('off', CONFIG.voyant && !ok); }
 function connect(){
   if(!CONFIG.twitch) return;
   try{ ws=new WebSocket('wss://irc-ws.chat.twitch.tv:443'); }catch(e){ return; }
