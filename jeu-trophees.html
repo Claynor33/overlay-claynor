@@ -45,6 +45,11 @@
   #ctrl input:focus{ outline:none; border-color:var(--cyan); }
   #ctrl .hint{ font-size:9px; letter-spacing:.05em; color:var(--ink-dim); text-align:center; }
 
+
+  /* --- nom de jeu : ajustement automatique --- */
+  .game-name>span{ display:inline-block; will-change:transform; }
+  .game-name.scroll>span{ animation:marq var(--md,9s) ease-in-out infinite; }
+  @keyframes marq{ 0%,14%{transform:translateX(0)} 50%,64%{transform:translateX(var(--mx,0))} 100%{transform:translateX(0)} }
 @keyframes blink{0%,100%{opacity:1;}50%{opacity:.25;}}
 @keyframes slideIn{to{opacity:1;transform:translateX(0);}}
 @keyframes pop{0%{transform:scale(1);}35%{transform:scale(1.5);filter:drop-shadow(0 0 16px var(--gold));}100%{transform:scale(1);}}
@@ -55,7 +60,7 @@
 </head>
 <body>
 <div class="bar">
-  <div class="bar-game"><div class="eyebrow"><span class="live"></span>En cours</div><div class="game-name" id="gameName">CRYSIS</div></div>
+  <div class="bar-game"><div class="eyebrow"><span class="live"></span>En cours</div><div class="game-name" id="gameName"><span>CRYSIS</span></div></div>
   <div class="bar-div"></div>
   <div class="bar-trophy"><div class="trophy-main">
     <svg class="trophy-ico" viewBox="0 0 24 24" fill="none"><path class="lt" d="M6 4h12v3a6 6 0 0 1-12 0V4Z"/><path class="lt" d="M18 4h3v2a3 3 0 0 1-3 3M6 4H3v2a3 3 0 0 0 3 3" stroke-width="1.6" stroke-linecap="round" fill="none"/><path class="dk" d="M10 13h4v3h-4z"/><path class="lt" d="M8 19h8v1.5H8z"/><path class="dk" d="M9.5 16.5h5V19h-5z"/></svg>
@@ -126,8 +131,34 @@ function applyTier(got,total){
   rs.setProperty('--gold',t.c); rs.setProperty('--gold-deep',t.d); rs.setProperty('--glow',t.glow);
   return t;
 }
+
+/* ===== nom de jeu trop long : réduction auto, puis défilement ===== */
+const NOM_LONG={
+  mode:"reduire",     // "reduire" (rétrécit) · "defiler" (fait défiler) · "couper" (…)
+  tailleMin:15,       // taille de police minimale en px
+  affichage:{}        // noms courts perso, ex: {"KINGDOM COME: DELIVERANCE":"Kingdom Come"}
+};
+function nomAffiche(n){ return NOM_LONG.affichage[n] || n; }
+function fitNom(){
+  const box=document.getElementById('gameName'); if(!box) return;
+  const inner=box.firstElementChild; if(!inner) return;
+  box.classList.remove('scroll'); inner.style.transform=''; box.style.fontSize='';
+  if(NOM_LONG.mode==='couper') return;
+  const base=parseFloat(getComputedStyle(box).fontSize)||24;
+  let size=base, guard=0;
+  while(inner.scrollWidth>box.clientWidth && size>NOM_LONG.tailleMin && guard++<40){ size-=1; box.style.fontSize=size+'px'; }
+  if(inner.scrollWidth>box.clientWidth+1 && NOM_LONG.mode==='defiler'){
+    const over=inner.scrollWidth-box.clientWidth+2;
+    box.style.setProperty('--mx', (-over)+'px');
+    box.style.setProperty('--md', Math.max(7, over/22+6).toFixed(1)+'s');
+    box.classList.add('scroll');
+  }
+}
+try{ if(document.fonts&&document.fonts.ready) document.fonts.ready.then(()=>fitNom()); }catch(e){}
+window.addEventListener('resize', fitNom);
 function render(){
-  document.getElementById('gameName').textContent=state.jeu.nom;
+  document.getElementById('gameName').firstElementChild.textContent = nomAffiche(state.jeu.nom);
+  requestAnimationFrame(fitNom);
   const g=state.trophees.obtenus,t=state.trophees.total,el=document.getElementById('tGot');
   document.getElementById('tTot').textContent=t;
   applyTier(g,t); applyTheme(accentGlobal());
