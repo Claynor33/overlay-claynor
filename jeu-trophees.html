@@ -84,7 +84,13 @@ function writeShared(patch){ let s=readShared()||{}; Object.assign(s,patch); s.v
 function subscribeHud(h){ if(bcHud) bcHud.onmessage=function(ev){ var d=ev.data; if(!d) return; if(d.kind==='state'&&h.state) h.state(d.s); if(d.kind==='trophy'&&h.trophy) h.trophy(d); }; if(h.state){ var lv=0; var c=readShared(); if(c) lv=c.v||0; setInterval(function(){ var s=readShared(); if(s&&(s.v||0)>lv){ lv=s.v; h.state(s); } },400); } if(h.trophy){ var lt=0; try{ var r0=localStorage.getItem('hud_celebrate'); if(r0) lt=JSON.parse(r0).ts||0; }catch(e){} setInterval(function(){ try{ var r=localStorage.getItem('hud_celebrate'); if(r){ var p=JSON.parse(r); if(p.ts&&p.ts>lt){ lt=p.ts; h.trophy(p); } } }catch(e){} },300); } }
 function tokenUrl(fb){ try{ return new URLSearchParams(location.search).get('token') || fb || ''; }catch(e){ return fb||''; } }
 
-const CONFIG={ jeu:{nom:"CRYSIS"}, trophees:{obtenus:3,total:41}, themes:{"CRYSIS":"#2de2e6"} };
+const CONFIG={
+  jeu:{nom:"CRYSIS"}, trophees:{obtenus:3,total:41},
+  /* "palier" = toute la DA suit bronze/argent/or/diamant/platine
+     "jeu"    = toute la DA suit la couleur du jeu en cours (ancien comportement) */
+  themeGlobal:"palier",
+  themes:{"CRYSIS":"#2de2e6"}
+};
 const K="wJT_v1";
 const PAL=["#2de2e6","#9d5cff","#ff8a3d","#3df08a","#ff4d8d","#3d8bff","#ff5d5d","#5ad1a0"];
 function accentFor(n){ if(CONFIG.themes[n]) return CONFIG.themes[n]; let h=0; for(const c of (n||'').toUpperCase()) h=(h*31+c.charCodeAt(0))>>>0; return PAL[h%PAL.length]; }
@@ -95,7 +101,7 @@ function loadP(){ try{const r=localStorage.getItem(K+'_p');return r?JSON.parse(r
 function saveP(){ try{localStorage.setItem(K+'_p',JSON.stringify(profils));}catch(e){} }
 function pop(el){ el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop'); }
 function countUp(node,t,d){const s=performance.now();(function f(n){const p=Math.min((n-s)/d,1);node.textContent=Math.round((1-Math.pow(1-p,3))*t);if(p<1)requestAnimationFrame(f);})(performance.now());}
-function publish(){ writeShared({ jeu:state.jeu.nom, accent:accentFor(state.jeu.nom), trophees:{obtenus:state.trophees.obtenus,total:state.trophees.total} }); try{ window.__pubRemoteState&&window.__pubRemoteState(); }catch(e){} }
+function publish(){ writeShared({ jeu:state.jeu.nom, accent:accentGlobal(), trophees:{obtenus:state.trophees.obtenus,total:state.trophees.total} }); try{ window.__pubRemoteState&&window.__pubRemoteState(); }catch(e){} }
 function fireCelebrate(){ const p={got:state.trophees.obtenus,total:state.trophees.total,ts:Date.now()}; try{ bcHud&&bcHud.postMessage(Object.assign({kind:'trophy'},p)); }catch(e){} try{ localStorage.setItem('hud_celebrate',JSON.stringify(p)); }catch(e){} }
 
 /* ===== PALIERS (identiques au widget Célébration) ===== */
@@ -107,6 +113,13 @@ const TIERS=[
   { id:"platine", nom:"Platine", max:101, c:"#e8f4ff", d:"#9fb4c6", glow:"rgba(232,244,255,.55)" }
 ];
 function tierFor(pct, complet){ if(complet) return TIERS[4]; for(const t of TIERS){ if(pct < t.max) return t; } return TIERS[3]; }
+function accentGlobal(){
+  if(CONFIG.themeGlobal==="palier"){
+    const S=state.trophees, exact=S.total?(S.obtenus/S.total*100):0;
+    return tierFor(exact, S.total>0 && S.obtenus>=S.total).c;
+  }
+  return accentFor(state.jeu.nom);
+}
 function applyTier(got,total){
   const exact = total?(got/total*100):0, t = tierFor(exact, total>0 && got>=total);
   const rs=document.documentElement.style;
@@ -117,7 +130,7 @@ function render(){
   document.getElementById('gameName').textContent=state.jeu.nom;
   const g=state.trophees.obtenus,t=state.trophees.total,el=document.getElementById('tGot');
   document.getElementById('tTot').textContent=t;
-  applyTier(g,t);
+  applyTier(g,t); applyTheme(accentGlobal());
   const pct=t?Math.round(g/t*100):0; document.getElementById('tPct').textContent=pct+' %';
   requestAnimationFrame(()=>document.getElementById('tBar').style.width=pct+'%');
   if(prev===null) countUp(el,g,900); else if(g>prev){ el.textContent=g; pop(el); fireCelebrate(); } else el.textContent=g; prev=g;
@@ -125,7 +138,7 @@ function render(){
 }
 function saveCur(){ profils[state.jeu.nom]={obtenus:state.trophees.obtenus,total:state.trophees.total}; saveP(); }
 function commit(){ saveCur(); save(); render(); publish(); }
-function changeGame(n){ n=(n||'').trim(); if(!n||n===state.jeu.nom) return; saveCur(); const p=profils[n]||{obtenus:0,total:CONFIG.trophees.total}; state.jeu.nom=n; state.trophees.obtenus=p.obtenus; state.trophees.total=p.total; profils[n]={...p}; saveP(); save(); applyTheme(accentFor(n)); prev=state.trophees.obtenus; render(); sync(); publish(); }
+function changeGame(n){ n=(n||'').trim(); if(!n||n===state.jeu.nom) return; saveCur(); const p=profils[n]||{obtenus:0,total:CONFIG.trophees.total}; state.jeu.nom=n; state.trophees.obtenus=p.obtenus; state.trophees.total=p.total; profils[n]={...p}; saveP(); save(); prev=state.trophees.obtenus; render(); sync(); publish(); }
 function sync(){ document.getElementById('cGame').value=state.jeu.nom; }
 document.getElementById('ctrl').addEventListener('click',e=>{ const a=e.target.getAttribute('data-a'); if(!a) return; const S=state.trophees;
   if(a==='tp'){S.obtenus=Math.min(S.obtenus+1,S.total);commit();}
@@ -142,7 +155,7 @@ const ctrl=document.getElementById('ctrl'); let hideT;
 function wake(){ if(!ctrl) return; ctrl.classList.add('show'); clearTimeout(hideT); hideT=setTimeout(()=>ctrl.classList.remove('show'),3500); }
 document.addEventListener('mousemove', wake); document.addEventListener('click', wake);
 
-applyTheme(accentFor(state.jeu.nom)); render(); sync(); publish();
+render(); sync(); applyTheme(accentGlobal()); publish();
 
 
 /* ===== TÉLÉCOMMANDE (téléphone) via relais MQTT public =====
