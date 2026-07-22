@@ -54,7 +54,7 @@ function writeShared(patch){ let s=readShared()||{}; Object.assign(s,patch); s.v
 function subscribeHud(h){ if(bcHud) bcHud.onmessage=function(ev){ var d=ev.data; if(!d) return; if(d.kind==='state'&&h.state) h.state(d.s); if(d.kind==='trophy'&&h.trophy) h.trophy(d); }; if(h.state){ var lv=0; var c=readShared(); if(c) lv=c.v||0; setInterval(function(){ var s=readShared(); if(s&&(s.v||0)>lv){ lv=s.v; h.state(s); } },400); } if(h.trophy){ var lt=0; try{ var r0=localStorage.getItem('hud_celebrate'); if(r0) lt=JSON.parse(r0).ts||0; }catch(e){} setInterval(function(){ try{ var r=localStorage.getItem('hud_celebrate'); if(r){ var p=JSON.parse(r); if(p.ts&&p.ts>lt){ lt=p.ts; h.trophy(p); } } }catch(e){} },300); } }
 function tokenUrl(fb){ try{ return new URLSearchParams(location.search).get('token') || fb || ''; }catch(e){ return fb||''; } }
 
-const CONFIG={ demo:true, accent:"#2de2e6", max:3, streamlabs:{token:""} };
+const CONFIG={ demo:false, accent:"#2de2e6", max:3, streamlabs:{token:""} };
 const K="wSou_v1";
 const LABELS={resub:"Resub",gift:"Sub offert",sub:"Sub",follow:"Follow",don:"Don",raid:"Raid",host:"Host",bits:"Bits"};
 let feed=loadF();

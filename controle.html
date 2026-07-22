@@ -54,6 +54,18 @@
       <div class="sub">Changer de jeu</div>
       <div class="row2"><input id="gi" placeholder="Nom du jeu"><button class="sm" id="setgame">OK</button></div>
     </div>
+    <div class="card">
+      <div class="sub" style="margin-top:0">Compteur de morts</div>
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+        <span id="dn" style="font-family:'Chakra Petch';font-weight:700;font-size:44px;line-height:1;color:#ff5d5d;text-shadow:0 0 18px rgba(255,93,93,.4)">–</span>
+        <span style="font-family:'Chakra Petch';font-weight:700;font-size:10px;letter-spacing:.24em;color:var(--ink-dim);text-transform:uppercase">morts</span>
+      </div>
+      <div class="row">
+        <button class="sm" data-d="dm">−1</button>
+        <button class="sm" id="dplus" data-d="dp" style="background:rgba(255,93,93,.14);border-color:rgba(255,93,93,.4);color:#ff5d5d">+1</button>
+        <button class="sm" data-d="dr">Reset</button>
+      </div>
+    </div>
     <div class="note">Garde cette page ouverte sur ton téléphone pendant le stream. Les boutons agissent en direct sur ton overlay.</div>
   </div>
 
@@ -63,6 +75,7 @@
 const ROOM="claynor-hud-x7k2";
 const BROKER="wss://broker.hivemq.com:8884/mqtt";
 const TA='claynor/'+ROOM+'/action', TS='claynor/'+ROOM+'/state';
+const TD='claynor/'+ROOM+'/deaths', TDA='claynor/'+ROOM+'/deathaction';
 
 const $=id=>document.getElementById(id);
 function setStatus(ok,txt){ const d=$('dot'); d.style.background=ok?'#3df08a':'#ff5d5d'; d.style.boxShadow='0 0 10px '+(ok?'#3df08a':'#ff5d5d'); $('status').textContent=txt||(ok?'Connecté':'Hors ligne'); }
@@ -70,11 +83,12 @@ function setStatus(ok,txt){ const d=$('dot'); d.style.background=ok?'#3df08a':'#
 let cli;
 try{
   cli=mqtt.connect(BROKER,{reconnectPeriod:3000,connectTimeout:8000});
-  cli.on('connect',()=>{ setStatus(true,'Connecté'); cli.subscribe(TS); });
+  cli.on('connect',()=>{ setStatus(true,'Connecté'); cli.subscribe(TS); cli.subscribe(TD); });
   cli.on('reconnect',()=>setStatus(false,'Reconnexion…'));
   cli.on('close',()=>setStatus(false,'Hors ligne'));
   cli.on('error',()=>setStatus(false,'Erreur'));
   cli.on('message',(t,p)=>{ try{ const s=JSON.parse(p.toString()); if(!s) return;
+    if(t===TD){ if(s.n!==undefined) $('dn').textContent=s.n; return; }
     if(s.jeu!==undefined) $('game').textContent=s.jeu;
     if(s.got!==undefined) $('got').textContent=s.got;
     if(s.total!==undefined) $('tot').textContent=s.total;
@@ -84,6 +98,8 @@ try{
 
 function send(o){ try{ cli && cli.publish(TA, JSON.stringify(o)); }catch(e){} }
 document.querySelectorAll('[data-a]').forEach(b=> b.addEventListener('click',()=> send({a:b.getAttribute('data-a')})) );
+function sendD(o){ try{ cli && cli.publish(TDA, JSON.stringify(o)); }catch(e){} }
+document.querySelectorAll('[data-d]').forEach(b=> b.addEventListener('click',()=> sendD({a:b.getAttribute('data-d')})) );
 $('setgame').addEventListener('click',()=>{ const v=$('gi').value.trim(); if(v){ send({a:'game',g:v}); $('gi').value=''; } });
 </script>
 </body>

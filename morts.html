@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Compteur de morts</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700&family=Rajdhani:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root{ --cyan:#2de2e6; --cyan-deep:#0fa3b1; --red:#ff5d5d; --red-deep:#a52626; --ink:#eaf6f7; --ink-dim:#6f858c; --line:rgba(45,226,230,.28); }
+  *{ margin:0; padding:0; box-sizing:border-box; }
+  html,body{ width:100%; height:100%; overflow:hidden; background:transparent; font-family:'Rajdhani',sans-serif; color:var(--ink); }
+
+  .box{ position:absolute; left:0; top:0; width:260px; height:72px; display:flex; align-items:center; gap:13px; padding:0 18px 0 16px;
+    background:linear-gradient(105deg, rgba(20,11,11,.96), rgba(11,8,9,.92));
+    clip-path:polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 16px 100%, 0 calc(100% - 16px)); overflow:hidden; }
+  .box::before{ content:''; position:absolute; left:0; top:0; bottom:0; width:3px; background:linear-gradient(var(--red),var(--red-deep)); box-shadow:0 0 12px var(--red); }
+  .box.hidden{ display:none; }
+  .ico{ width:32px; height:32px; color:var(--red); display:inline-flex; filter:drop-shadow(0 0 8px rgba(255,93,93,.55)); }
+  .ico svg{ width:100%; height:100%; }
+  .txt{ display:flex; flex-direction:column; gap:2px; min-width:0; }
+  .lbl{ font-family:'Chakra Petch'; font-weight:700; font-size:10px; letter-spacing:.32em; color:var(--ink-dim); text-transform:uppercase; }
+  .game{ font-family:'Rajdhani'; font-weight:600; font-size:11px; letter-spacing:.1em; color:var(--ink-dim); text-transform:uppercase; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:120px; }
+  .n{ margin-left:auto; font-family:'Chakra Petch'; font-weight:700; font-size:38px; line-height:1; color:var(--red); text-shadow:0 0 18px rgba(255,93,93,.45); font-variant-numeric:tabular-nums; }
+  .n.bump{ animation:bump .5s cubic-bezier(.2,1.5,.3,1); }
+
+  #ctrl{ position:absolute; left:0; top:82px; z-index:80; display:flex; flex-direction:column; gap:8px; padding:12px 14px; background:rgba(6,11,14,.96); border:1px solid var(--line); border-radius:10px; opacity:0; pointer-events:none; transition:opacity .18s ease; }
+  #ctrl.show{ opacity:1; pointer-events:auto; }
+  #ctrl .t{ font-family:'Chakra Petch'; font-weight:700; font-size:10px; letter-spacing:.26em; color:var(--cyan); text-transform:uppercase; text-align:center; }
+  #ctrl .row{ display:flex; align-items:center; gap:7px; }
+  #ctrl button{ min-width:34px; height:32px; padding:0 11px; cursor:pointer; font-family:'Chakra Petch'; font-weight:700; font-size:14px; color:var(--ink); background:rgba(45,226,230,.10); border:1px solid var(--line); border-radius:6px; }
+  #ctrl button:hover{ background:var(--cyan); color:#04252a; }
+  #ctrl button.red{ background:rgba(255,93,93,.14); border-color:rgba(255,93,93,.4); color:var(--red); }
+  #ctrl button.red:hover{ background:var(--red); color:#2a0606; }
+  #ctrl button.on{ background:var(--cyan); color:#04252a; }
+  #ctrl .v{ min-width:46px; text-align:center; font-family:'Chakra Petch'; font-weight:700; font-size:16px; color:var(--red); }
+
+  @keyframes bump{0%{transform:scale(1)}45%{transform:scale(1.3)}100%{transform:scale(1)}}
+  @media (prefers-reduced-motion: reduce){ .n.bump{animation:none} }
+</style>
+</head>
+<body>
+  <div class="box" id="box">
+    <span class="ico"></span>
+    <div class="txt"><span class="lbl" id="lbl">Morts</span><span class="game" id="gm"></span></div>
+    <span class="n" id="n">0</span>
+  </div>
+
+  <div id="ctrl">
+    <div class="t">Compteur de morts</div>
+    <div class="row"><button data-a="m">−1</button><span class="v" id="cv">0</span><button class="red" data-a="p">+1</button><button data-a="r">Reset</button><button data-a="t" id="tg">ON</button></div>
+  </div>
+
+<script>
+const CONFIG={
+  label:"Morts",              // ou "Tentatives", "Game overs"…
+  parJeu:true,                // true = un compteur par jeu (suit le widget Jeu & trophées)
+  afficherJeu:false,          // afficher le nom du jeu sous le libellé
+  remote:{ actif:true, room:"claynor-hud-x7k2", broker:"wss://broker.hivemq.com:8884/mqtt" }
+};
+const K="wMorts_v1";
+const SKEY='hud_shared_v1';
+
+document.querySelector('.ico').innerHTML='<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C7.6 2 4 5.4 4 9.6c0 2.4 1.2 4.5 3 5.9V19a1 1 0 0 0 1 1h1.5v-2h1.7v2h1.6v-2h1.7v2H16a1 1 0 0 0 1-1v-3.5c1.8-1.4 3-3.5 3-5.9C20 5.4 16.4 2 12 2zM9 12.2a1.9 1.9 0 1 1 0-3.8 1.9 1.9 0 0 1 0 3.8zm6 0a1.9 1.9 0 1 1 0-3.8 1.9 1.9 0 0 1 0 3.8z"/></svg>';
+document.getElementById('lbl').textContent=CONFIG.label;
+
+let data=load();                      // { actif:bool, global:0, jeux:{ "CRYSIS":4 } }
+function load(){ try{const r=localStorage.getItem(K);return r?JSON.parse(r):{actif:true,global:0,jeux:{}};}catch(e){return {actif:true,global:0,jeux:{}};} }
+function save(){ try{localStorage.setItem(K,JSON.stringify(data));}catch(e){} }
+function shared(){ try{const r=localStorage.getItem(SKEY);return r?JSON.parse(r):null;}catch(e){return null;} }
+function jeu(){ const s=shared(); return (s&&s.jeu)?s.jeu:"—"; }
+function get(){ return CONFIG.parJeu ? (data.jeux[jeu()]||0) : (data.global||0); }
+function set(v){ v=Math.max(0,v); if(CONFIG.parJeu) data.jeux[jeu()]=v; else data.global=v; save(); render(true); pubRemote(); }
+
+let last=null;
+function render(anim){
+  const box=document.getElementById('box'), el=document.getElementById('n');
+  box.classList.toggle('hidden', !data.actif);
+  const v=get(); el.textContent=v;
+  document.getElementById('cv').textContent=v;
+  document.getElementById('gm').textContent=(CONFIG.afficherJeu&&CONFIG.parJeu)?jeu():'';
+  const b=document.getElementById('tg'); b.textContent=data.actif?'ON':'OFF'; b.classList.toggle('on',data.actif);
+  if(anim && last!==null && v!==last){ el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump'); }
+  last=v;
+}
+function shade(hex,amt){const n=parseInt(hex.slice(1),16);let r=(n>>16)&255,g=(n>>8)&255,b=n&255;const f=amt<0?0:255,t=Math.abs(amt);r=Math.round((f-r)*t+r);g=Math.round((f-g)*t+g);b=Math.round((f-b)*t+b);return '#'+((1<<24)+(r<<16)+(g<<8)+b).toString(16).slice(1);}
+
+/* suit le jeu en cours (change de compteur) + la couleur d'accent */
+(function(){ var lv=0,bc=null; try{bc=new BroadcastChannel('hud-claynor');}catch(e){}
+  function ap(s){ if(s&&s.accent){ document.documentElement.style.setProperty('--cyan',s.accent); document.documentElement.style.setProperty('--cyan-deep',shade(s.accent,-0.4)); } render(false); pubRemote(); }
+  var s0=shared(); if(s0){ lv=s0.v||0; ap(s0); }
+  if(bc) bc.addEventListener('message',function(ev){ if(ev.data&&ev.data.kind==='state') ap(ev.data.s); });
+  setInterval(function(){ var s=shared(); if(s&&(s.v||0)>lv){ lv=s.v; ap(s); } },400);
+})();
+
+/* panneau local (Interagir) */
+document.getElementById('ctrl').addEventListener('click',e=>{ const a=e.target.getAttribute('data-a'); if(!a) return;
+  if(a==='p') set(get()+1);
+  if(a==='m') set(get()-1);
+  if(a==='r') set(0);
+  if(a==='t'){ data.actif=!data.actif; save(); render(false); pubRemote(); } });
+const ctrl=document.getElementById('ctrl'); let hideT;
+function wake(){ ctrl.classList.add('show'); clearTimeout(hideT); hideT=setTimeout(()=>ctrl.classList.remove('show'),3500); }
+document.addEventListener('mousemove',wake); document.addEventListener('click',wake);
+document.addEventListener('keydown',e=>{ if(e.key==='+'||e.key==='ArrowUp') set(get()+1); if(e.key==='-'||e.key==='ArrowDown') set(get()-1); });
+
+/* télécommande téléphone (MQTT) */
+let mcli=null;
+function pubRemote(){ try{ mcli && mcli.publish('claynor/'+CONFIG.remote.room+'/deaths', JSON.stringify({n:get(),actif:data.actif}), {retain:true}); }catch(e){} }
+(function(){ if(!CONFIG.remote.actif) return;
+  const s=document.createElement('script'); s.src='https://unpkg.com/mqtt/dist/mqtt.min.js';
+  s.onload=function(){ try{
+    mcli=mqtt.connect(CONFIG.remote.broker,{reconnectPeriod:3000});
+    mcli.on('connect',function(){ mcli.subscribe('claynor/'+CONFIG.remote.room+'/deathaction'); pubRemote(); });
+    mcli.on('message',function(t,p){ let m; try{ m=JSON.parse(p.toString()); }catch(e){ return; }
+      if(m.a==='dp') set(get()+1);
+      else if(m.a==='dm') set(get()-1);
+      else if(m.a==='dr') set(0);
+      else if(m.a==='dt'){ data.actif=!data.actif; save(); render(false); pubRemote(); } });
+  }catch(e){} };
+  document.head.appendChild(s);
+})();
+
+window.setMorts=(v)=>set(v);
+window.resetMorts=()=>set(0);
+render(false);
+</script>
+</body>
+</html>
