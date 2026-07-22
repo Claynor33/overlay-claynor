@@ -269,6 +269,7 @@ const TIERS=[
   { id:"diamant", nom:"Diamant", max:100, c:"#b9f2ff", d:"#4fa9c4", glow:"rgba(185,242,255,.5)"  },
   { id:"platine", nom:"Platine", max:101, c:"#e8f4ff", d:"#9fb4c6", glow:"rgba(232,244,255,.55)" }
 ];
+function setAccentColor(a){ document.documentElement.style.setProperty('--cyan', a); document.documentElement.style.setProperty('--cyan-deep', shade(a,-0.4)); }
 function tierFor(pct, complet){ if(complet) return TIERS[4]; for(const t of TIERS){ if(pct < t.max) return t; } return TIERS[3]; }
 function applyTier(got,total){
   const exact = total?(got/total*100):0, t = tierFor(exact, total>0 && got>=total);
@@ -291,7 +292,7 @@ function render(){
   document.getElementById('gameName').textContent = state.jeu.nom;
   const got=state.trophees.obtenus, tot=state.trophees.total, gotEl=document.getElementById('tGot');
   document.getElementById('tTot').textContent = tot;
-  applyTier(got,tot); applyTheme(accentGlobal());
+  applyTier(got,tot); setAccentColor(accentGlobal());
   const pct = tot ? Math.round((got/tot)*100) : 0;
   document.getElementById('tPct').textContent = pct+' %';
   requestAnimationFrame(()=> document.getElementById('tBar').style.width = pct+'%');
@@ -461,9 +462,8 @@ window.testDon=(n='LUNA',a='5€')=> handleEvent('donation',{name:n,formatted_am
 window.testRaid=(n='POKIMANE',c=138)=> handleEvent('raid',{name:n,raiders:c});
 window.testBits=(n='XQCOW',a=500)=> handleEvent('bits',{name:n,amount:String(a)});
 window.testTrophee=()=>{ state.trophees.obtenus=Math.min(state.trophees.obtenus+1,state.trophees.total); render(); };
-window.resetHUD=()=>{ ['','_feed','_profils','_obj'].forEach(k=>{ try{ localStorage.removeItem(STORE_KEY+k);}catch(e){} }); state={jeu:{...CONFIG.jeu},trophees:{...CONFIG.trophees}}; feed=[]; profils={}; objectif={actuel:0,actif:CONFIG.objectif.actif}; prevGot=null; applyTheme(state.jeu.nom); render(); syncInputs(); };
+window.resetHUD=()=>{ ['','_feed','_profils','_obj'].forEach(k=>{ try{ localStorage.removeItem(STORE_KEY+k);}catch(e){} }); state={jeu:{...CONFIG.jeu},trophees:{...CONFIG.trophees}}; feed=[]; profils={}; objectif={actuel:0,actif:CONFIG.objectif.actif}; prevGot=null; render(); syncInputs(); };
 
-applyTheme(state.jeu.nom);
 fit(); render(); syncInputs();
 connectStreamlabs((new URLSearchParams(location.search).get('token'))||CONFIG.streamlabs.token);
 
@@ -486,7 +486,7 @@ if(CONFIG.modePreview){
   var SKEY='hud_shared_v1', lv=0; var bc=null; try{bc=new BroadcastChannel('hud-claynor');}catch(e){}
   function rd(){ try{var r=localStorage.getItem(SKEY);return r?JSON.parse(r):null;}catch(e){return null;} }
   function pub(){ try{ var s=rd()||{}; s.jeu=state.jeu.nom; s.accent=accentGlobal(); s.trophees={obtenus:state.trophees.obtenus,total:state.trophees.total}; s.v=Date.now(); lv=s.v; localStorage.setItem(SKEY,JSON.stringify(s)); bc&&bc.postMessage({kind:'state',s}); }catch(e){} }
-  function ap(s){ if(!s) return; try{ if(s.jeu!==undefined) state.jeu.nom=s.jeu; if(s.trophees){ state.trophees.obtenus=s.trophees.obtenus; state.trophees.total=s.trophees.total; } var acc=s.accent||accentFor(state.jeu.nom)||'#2de2e6'; document.documentElement.style.setProperty('--cyan',acc); document.documentElement.style.setProperty('--cyan-deep',shade(acc,-0.4)); prevGot=state.trophees.obtenus; if(typeof render==='function') render(); if(typeof syncInputs==='function') syncInputs(); }catch(e){} }
+  function ap(s){ if(!s) return; try{ if(s.jeu!==undefined) state.jeu.nom=s.jeu; if(s.trophees){ state.trophees.obtenus=s.trophees.obtenus; state.trophees.total=s.trophees.total; } var acc=(typeof accentGlobal==='function')?accentGlobal():(s.accent||accentFor(state.jeu.nom)||'#2de2e6'); document.documentElement.style.setProperty('--cyan',acc); document.documentElement.style.setProperty('--cyan-deep',shade(acc,-0.4)); prevGot=state.trophees.obtenus; if(typeof render==='function') render(); if(typeof syncInputs==='function') syncInputs(); }catch(e){} }
   window.__pubShared=pub;
   var init=rd(); if(init){ lv=init.v||0; ap(init); }
   if(bc) bc.addEventListener('message',function(ev){ if(ev.data&&ev.data.kind==='state'){ lv=Math.max(lv,ev.data.s.v||0); ap(ev.data.s); } });
