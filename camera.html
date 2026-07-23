@@ -8,19 +8,21 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700&family=Rajdhani:wght@600;700&display=swap" rel="stylesheet">
 <style>
-  :root{ --plat:#e8f4ff; --plat-deep:#9fb4c6; --pglow:rgba(232,244,255,.5); --cyan:#2de2e6; --cyan-deep:#0fa3b1; --gold:#f5c542; --ink:#eaf6f7; --ink-dim:#6f858c; --line:rgba(45,226,230,.28); }
+  :root{ --plat:#e8f4ff; --plat-deep:#9fb4c6; --pglow:rgba(232,244,255,.5);
+         --cyan:#2de2e6; --cyan-deep:#0fa3b1; --ink:#eaf6f7; --ink-dim:#6f858c; --line:rgba(45,226,230,.28);
+         --tc:#e8f4ff; --td:#9fb4c6; }
   *{ margin:0; padding:0; box-sizing:border-box; }
   html,body{ width:100%; height:100%; overflow:hidden; background:transparent; font-family:'Rajdhani',sans-serif; color:var(--ink); }
+  #scene{ position:absolute; inset:0; perspective:900px; }
 
-  .cam{ position:absolute; left:0; top:0; width:360px; height:203px; overflow:hidden; }
+  /* ---- cadre caméra (positionné avec des marges pour l'animation) ---- */
+  .cam{ position:absolute; width:360px; height:203px; overflow:hidden; }
   .cam-edge{ position:absolute; inset:0; border:1px solid var(--line); border-left:none; pointer-events:none; }
   .cam::before{ content:''; position:absolute; left:0; top:0; bottom:0; width:3px; background:linear-gradient(var(--cyan),var(--cyan-deep)); box-shadow:0 0 12px var(--cyan); z-index:4; }
 
-  /* pseudo (haut gauche) */
   .cam-label{ position:absolute; left:0; top:0; display:flex; align-items:center; gap:7px; height:24px; padding:0 12px; background:linear-gradient(90deg, rgba(10,15,19,.92), rgba(10,15,19,.35)); font-family:'Chakra Petch'; font-weight:700; font-size:10px; letter-spacing:.28em; color:var(--cyan); text-transform:uppercase; z-index:2; }
   .cam-label .live{ width:6px; height:6px; border-radius:50%; background:#ff4d4d; box-shadow:0 0 8px #ff4d4d; animation:blink 1.4s ease-in-out infinite; }
 
-  /* viewers (haut droite) */
   .cam-view{ position:absolute; right:0; top:0; display:flex; align-items:center; gap:7px; height:24px; padding:0 13px 0 12px;
     background:linear-gradient(270deg, rgba(10,15,19,.92), rgba(10,15,19,.30));
     z-index:2; opacity:0; transform:translateX(8px); transition:opacity .35s ease, transform .35s ease; }
@@ -33,8 +35,9 @@
   /* platines (bas gauche) */
   .cam-plat{ position:absolute; left:0; bottom:0; display:flex; align-items:center; gap:7px; height:24px; padding:0 13px 0 12px;
     background:linear-gradient(90deg, rgba(10,15,19,.92), rgba(10,15,19,.30));
-    z-index:2; opacity:0; transform:translateX(-8px); transition:opacity .35s ease, transform .35s ease; }
+    z-index:2; opacity:0; transform:translateX(-8px); transition:opacity .3s ease, transform .3s ease; }
   .cam-plat.on{ opacity:1; transform:translateX(0); }
+  .cam-plat.vol{ opacity:0; }                       /* masqué pendant l'animation */
   .cam-plat .tico{ width:15px; height:15px; display:inline-flex; filter:drop-shadow(0 0 6px var(--pglow)); }
   .cam-plat .tico svg{ width:100%; height:100%; }
   .cam-plat .tico .lt{ fill:var(--plat); stroke:var(--plat); } .cam-plat .tico .dk{ fill:var(--plat-deep); }
@@ -46,43 +49,89 @@
   .b::before{ width:100%; height:2px; } .b::after{ width:2px; height:100%; }
   .tr{ top:0; right:0; } .tr::before{ top:0; right:0; } .tr::after{ top:0; right:0; }
   .br{ bottom:0; right:0; } .br::before{ bottom:0; right:0; } .br::after{ bottom:0; right:0; }
-  .bl{ bottom:0; left:0; } .bl::before{ bottom:0; left:0; } .bl::after{ bottom:0; left:0; }
+
+  /* ---- trophée volant (animation d'alerte) ---- */
+  #fly{ position:absolute; width:24px; height:24px; z-index:20; opacity:0; transform-style:preserve-3d; pointer-events:none;
+    filter:drop-shadow(0 0 14px var(--tc)); }
+  #fly svg{ width:100%; height:100%; }
+  #fly .lt{ fill:var(--tc); stroke:var(--tc); } #fly .dk{ fill:var(--td); }
+  #halo{ position:absolute; width:200px; height:200px; border-radius:50%; z-index:19; opacity:0; pointer-events:none;
+    background:radial-gradient(circle, var(--tc) 0%, transparent 62%); }
+  #flyname{ position:absolute; z-index:21; opacity:0; pointer-events:none; text-align:center; white-space:nowrap; transform:translate(-50%,-50%); }
+  #flyname .k{ font-family:'Chakra Petch'; font-weight:700; font-size:13px; letter-spacing:.34em; color:var(--tc); text-transform:uppercase; text-shadow:0 0 14px var(--tc); }
+  #flyname .p{ font-family:'Chakra Petch'; font-weight:700; font-size:30px; letter-spacing:.05em; color:var(--ink); text-transform:uppercase; text-shadow:0 0 20px var(--tc); margin-top:3px; }
+  #flyname .l{ height:2px; margin:7px auto 0; width:70%; background:linear-gradient(90deg,transparent,var(--tc),transparent); box-shadow:0 0 10px var(--tc); }
+  .spark{ position:absolute; width:7px; height:7px; background:var(--tc); box-shadow:0 0 9px var(--tc); border-radius:2px; z-index:18; pointer-events:none; }
 
   @keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
   @keyframes bump{0%{transform:scale(1)}45%{transform:scale(1.28)}100%{transform:scale(1)}}
-  @media (prefers-reduced-motion: reduce){ .live{animation:none} .cam-view .n.bump{animation:none} }
+  @media (prefers-reduced-motion: reduce){ .live{animation:none} }
 </style>
 </head>
 <body>
-  <div class="cam">
-    <div class="cam-edge"></div>
-    <div class="cam-label"><span class="live"></span><span id="lbl">CLAYNOR</span></div>
-    <div class="cam-view" id="vw"><span class="eye"></span><span class="n" id="vn">0</span></div>
-    <div class="cam-plat" id="pl"><span class="tico"></span><span class="n" id="pn">0</span></div>
-    <span class="b tr"></span><span class="b br"></span>
+  <div id="scene">
+    <div class="cam" id="cam">
+      <div class="cam-edge"></div>
+      <div class="cam-label"><span class="live"></span><span id="lbl">CLAYNOR</span></div>
+      <div class="cam-view" id="vw"><span class="eye"></span><span class="n" id="vn">0</span></div>
+      <div class="cam-plat" id="pl"><span class="tico"></span><span class="n" id="pn">0</span></div>
+      <span class="b tr"></span><span class="b br"></span>
+    </div>
+    <div id="halo"></div>
+    <div id="fly"></div>
+    <div id="flyname"><div class="k" id="fk">Nouveau follow</div><div class="p" id="fp">PSEUDO</div><div class="l"></div></div>
   </div>
 
 <script>
+/* =======================================================================
+   CONFIG
+   ======================================================================= */
 const CONFIG={
   label:"CLAYNOR",
   accent:"#2de2e6",
-  twitch:"claynor",        // ta chaîne Twitch (en minuscules) — vide "" = pas de compteur
-  refresh:60,              // secondes entre chaque relevé (min. 30)
-  demo:false,               // true = affiche un nombre d'exemple si hors ligne (mets false pour OBS)
-  platines:{
-    actif:true,            // affiche le compteur de platines en bas à gauche
-    depart:0,              // valeur de départ (1re fois seulement) — ensuite modifiable en direct
-    auto:true              // +1 automatique quand un jeu atteint 100 %
+  twitch:"claynor",         // chaîne Twitch (minuscules) pour les viewers
+  refresh:60,
+  demo:false,                // true = aperçu (exemples + animations de test)
+
+  /* espace libre autour du cadre, nécessaire à l'animation.
+     Taille de la source OBS = 360 + 2*x  par  203 + 2*y  */
+  marges:{ x:210, y:150 },
+
+  platines:{ actif:true, depart:0, auto:true },
+
+  alerte:{
+    actif:true, son:true,
+    duree:3.4,              // secondes pendant lesquelles le pseudo reste affiché
+    vol:1.2,                // secondes du trajet aller (et du retour)
+    streamlabs:{ token:"" },
+    evenements:{ follow:true, sub:true, don:true, raid:true, bits:true }
   }
 };
 
+/* niveaux : mêmes couleurs que les paliers de trophées */
+const NIV={
+  follow :{ c:"#cd7f32", d:"#7d4a1c", k:"Nouveau follow", s:1 },
+  don    :{ c:"#c9d4de", d:"#7d8a97", k:"Don",            s:2 },
+  resub  :{ c:"#f5c542", d:"#c8951f", k:"Resub",          s:3 },
+  sub    :{ c:"#b9f2ff", d:"#4fa9c4", k:"Nouveau sub",    s:4 },
+  gift   :{ c:"#e8f4ff", d:"#9fb4c6", k:"Sub offert",     s:5 },
+  raid   :{ c:"#ff8a3d", d:"#a8501a", k:"Raid !",         s:4 },
+  bits   :{ c:"#a970ff", d:"#5c30a8", k:"Bits",           s:4 }
+};
+const TROPHY='<svg viewBox="0 0 24 24" fill="none"><path class="lt" d="M6 4h12v3a6 6 0 0 1-12 0V4Z"/><path class="lt" d="M18 4h3v2a3 3 0 0 1-3 3M6 4H3v2a3 3 0 0 0 3 3" stroke-width="1.6" stroke-linecap="round" fill="none"/><path class="dk" d="M10 13h4v3h-4z"/><path class="lt" d="M8 19h8v1.5H8z"/><path class="dk" d="M9.5 16.5h5V19h-5z"/></svg>';
+
+/* =======================================================================
+   MISE EN PLACE
+   ======================================================================= */
 document.getElementById('lbl').textContent=CONFIG.label;
-document.querySelector('.eye').innerHTML='<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 5C6.5 5 2.2 8.6 1 12c1.2 3.4 5.5 7 11 7s9.8-3.6 11-7c-1.2-3.4-5.5-7-11-7zm0 11.5A4.5 4.5 0 1 1 12 7.5a4.5 4.5 0 0 1 0 9zm0-2.2a2.3 2.3 0 1 0 0-4.6 2.3 2.3 0 0 0 0 4.6z"/></svg>';
+document.querySelector('.cam-view .eye').innerHTML='<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 5C6.5 5 2.2 8.6 1 12c1.2 3.4 5.5 7 11 7s9.8-3.6 11-7c-1.2-3.4-5.5-7-11-7zm0 11.5A4.5 4.5 0 1 1 12 7.5a4.5 4.5 0 0 1 0 9zm0-2.2a2.3 2.3 0 1 0 0-4.6 2.3 2.3 0 0 0 0 4.6z"/></svg>';
+document.querySelector('.cam-plat .tico').innerHTML=TROPHY;
+document.getElementById('fly').innerHTML=TROPHY;
+const cam=document.getElementById('cam');
+cam.style.left=CONFIG.marges.x+'px'; cam.style.top=CONFIG.marges.y+'px';
 
 function shade(hex,amt){const n=parseInt(hex.slice(1),16);let r=(n>>16)&255,g=(n>>8)&255,b=n&255;const f=amt<0?0:255,t=Math.abs(amt);r=Math.round((f-r)*t+r);g=Math.round((f-g)*t+g);b=Math.round((f-b)*t+b);return '#'+((1<<24)+(r<<16)+(g<<8)+b).toString(16).slice(1);}
 function applyTheme(a){ document.documentElement.style.setProperty('--cyan',a); document.documentElement.style.setProperty('--cyan-deep',shade(a,-0.4)); }
-
-/* ---- suit la couleur du jeu en cours (état partagé) ---- */
 const SKEY='hud_shared_v1';
 function readShared(){ try{const r=localStorage.getItem(SKEY);return r?JSON.parse(r):null;}catch(e){return null;} }
 (function(){ var lv=0,bc=null; try{bc=new BroadcastChannel('hud-claynor');}catch(e){}
@@ -91,9 +140,10 @@ function readShared(){ try{const r=localStorage.getItem(SKEY);return r?JSON.pars
   setInterval(function(){ var s=readShared(); if(s&&(s.v||0)>lv){ lv=s.v; if(s.accent) applyTheme(s.accent); } },400);
 })();
 
-/* ---- compteur de platines (bas gauche) ---- */
+/* =======================================================================
+   COMPTEUR DE PLATINES
+   ======================================================================= */
 const PK="wPlatines_v1";
-document.querySelector('.cam-plat .tico').innerHTML='<svg viewBox="0 0 24 24" fill="none"><path class="lt" d="M6 4h12v3a6 6 0 0 1-12 0V4Z"/><path class="lt" d="M18 4h3v2a3 3 0 0 1-3 3M6 4H3v2a3 3 0 0 0 3 3" stroke-width="1.6" stroke-linecap="round" fill="none"/><path class="dk" d="M10 13h4v3h-4z"/><path class="lt" d="M8 19h8v1.5H8z"/><path class="dk" d="M9.5 16.5h5V19h-5z"/></svg>';
 let pdata=ploadP();
 function ploadP(){ try{const r=localStorage.getItem(PK); const d=r?JSON.parse(r):null; return d||{n:CONFIG.platines.depart,actif:true,faits:{}};}catch(e){return {n:CONFIG.platines.depart,actif:true,faits:{}};} }
 function psave(){ try{localStorage.setItem(PK,JSON.stringify(pdata));}catch(e){} }
@@ -109,7 +159,6 @@ function psetP(v){ pdata.n=Math.max(0,v); psave(); prender(true); }
 window.setPlatines=(v)=>psetP(v);
 window.addPlatine=()=>psetP(pdata.n+1);
 window.resetPlatines=()=>{ pdata={n:CONFIG.platines.depart,actif:true,faits:{}}; psave(); plast=null; prender(false); };
-/* +1 auto quand un jeu atteint 100 % (une seule fois par jeu) */
 let ptTs=0; try{ const r=localStorage.getItem('hud_celebrate'); if(r) ptTs=JSON.parse(r).ts||0; }catch(e){}
 function ponTrophy(p){
   if(!CONFIG.platines.auto||!p||!p.ts||p.ts<=ptTs) return; ptTs=p.ts;
@@ -119,35 +168,153 @@ function ponTrophy(p){
 }
 try{ const bcp=new BroadcastChannel('hud-claynor'); bcp.addEventListener('message',e=>{ if(e.data&&e.data.kind==='trophy') ponTrophy(e.data); }); }catch(e){}
 setInterval(()=>{ try{ const r=localStorage.getItem('hud_celebrate'); if(r) ponTrophy(JSON.parse(r)); }catch(e){} },400);
-/* synchro si le nombre est modifié depuis une autre source */
 setInterval(()=>{ try{ const r=localStorage.getItem(PK); if(r){ const d=JSON.parse(r); if(d && d.n!==pdata.n){ pdata=d; prender(true); } } }catch(e){} },800);
 prender(false);
 
-/* ---- compteur de viewers (DecAPI, sans clé) ---- */
-let lastN=null;
-function showViewers(n){
-  const box=document.getElementById('vw'), el=document.getElementById('vn');
-  el.textContent=n.toLocaleString('fr-FR');
-  box.classList.add('on');
-  if(lastN!==null && n!==lastN){ el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump'); }
-  lastN=n;
+/* =======================================================================
+   ANIMATION : le trophée s'envole, tourne, grossit, annonce, puis revient
+   ======================================================================= */
+let actx;
+function ding(kind){
+  if(!CONFIG.alerte.son) return;
+  const S={ follow:{t:'sine',n:[[440,0],[554,.10]]}, don:{t:'triangle',n:[[587,0],[784,.10]]},
+            resub:{t:'triangle',n:[[784,0],[988,.09],[1175,.18]]}, sub:{t:'sine',n:[[988,0],[1319,.09],[1760,.18]]},
+            gift:{t:'triangle',n:[[784,0],[988,.11],[1175,.22],[1568,.34],[2093,.46]]},
+            raid:{t:'triangle',n:[[392,0],[523,.08],[659,.16],[880,.24],[1047,.32]]},
+            bits:{t:'sine',n:[[1319,0],[1760,.07],[1319,.14],[2093,.21]]} }[kind];
+  if(!S) return;
+  try{ actx=actx||new (window.AudioContext||window.webkitAudioContext)(); if(actx.state==='suspended') actx.resume();
+    const now=actx.currentTime;
+    S.n.forEach(([f,dt])=>{ const o=actx.createOscillator(),g=actx.createGain(); o.type=S.t; o.frequency.value=f;
+      g.gain.setValueAtTime(0.0001,now+dt); g.gain.exponentialRampToValueAtTime(0.16,now+dt+0.02); g.gain.exponentialRampToValueAtTime(0.0001,now+dt+0.45);
+      o.connect(g).connect(actx.destination); o.start(now+dt); o.stop(now+dt+0.5); });
+  }catch(e){}
 }
+function sparks(n,cx,cy){
+  for(let i=0;i<n;i++){ const s=document.createElement('span'); s.className='spark';
+    s.style.left=cx+'px'; s.style.top=cy+'px'; document.getElementById('scene').appendChild(s);
+    const a=Math.random()*Math.PI*2, d=70+Math.random()*130;
+    s.animate([{transform:'translate(-50%,-50%) scale(1)',opacity:1},
+               {transform:'translate(calc(-50% + '+Math.cos(a)*d+'px), calc(-50% + '+Math.sin(a)*d+'px)) scale(0)',opacity:0}],
+              {duration:800+Math.random()*600,easing:'cubic-bezier(.2,.7,.2,1)'});
+    setTimeout(()=>s.remove(),1500); }
+}
+
+let file=[], occupe=false;
+function annoncer(a){ if(file.length>5) return; file.push(a); pomper(); }
+function pomper(){ if(occupe||!file.length) return; occupe=true; const a=file.shift(); const d=jouer(a)||5200; setTimeout(()=>{ occupe=false; pomper(); }, d+500); }
+
+function jouer(a){
+  const n=NIV[a.kind]||NIV.follow;
+  document.documentElement.style.setProperty('--tc',n.c);
+  document.documentElement.style.setProperty('--td',n.d);
+
+  const sc=document.getElementById('scene'), fly=document.getElementById('fly'),
+        halo=document.getElementById('halo'), nm=document.getElementById('flyname'),
+        bandeau=document.getElementById('pl'), tico=document.querySelector('.cam-plat .tico');
+
+  /* point de départ = le trophée du bandeau */
+  const r=tico.getBoundingClientRect(), rs=sc.getBoundingClientRect();
+  const ox=r.left-rs.left+r.width/2, oy=r.top-rs.top+r.height/2;
+  /* point d'arrivée = centre du cadre caméra, un peu au-dessus */
+  const sx=CONFIG.marges.x+180, sy=CONFIG.marges.y+72;
+  const dx=sx-ox, dy=sy-oy;
+  const taille = 3.4 + n.s*0.5;                    // plus l'événement est "haut", plus il grossit
+
+  fly.style.left=ox+'px'; fly.style.top=oy+'px';
+  halo.style.left=sx+'px'; halo.style.top=sy+'px'; halo.style.transform='translate(-50%,-50%) scale(.3)';
+  nm.style.left=sx+'px'; nm.style.top=(sy+92)+'px';
+  document.getElementById('fk').textContent=a.titre||n.k;
+  document.getElementById('fp').textContent=a.nom||'';
+
+  bandeau.classList.add('vol');
+  const VOL=(CONFIG.alerte.vol||1.2)*1000, HOLD=(CONFIG.alerte.duree||3.4)*1000;
+  const D=VOL*2+HOLD, o=t=>t/D;                    // repères temporels
+  const oArr=o(VOL), oFin=o(VOL+HOLD);             // arrivée / départ du retour
+  const oNomIn=o(VOL+120), oNomFull=o(VOL+380), oNomOut=o(VOL+HOLD-300), oNomEnd=o(VOL+HOLD-60);
+  const T=(tx,ty,s,rot)=>'translate(-50%,-50%) translate('+tx+'px,'+ty+'px) scale('+s+') rotateY('+rot+'deg)';
+
+  fly.animate([
+    { offset:0,             opacity:0, transform:T(0,0,1,0) },
+    { offset:o(VOL*0.22),   opacity:1, transform:T(dx*0.12,dy*0.12-14,1.5,90) },
+    { offset:oArr,          opacity:1, transform:T(dx,dy,taille,540) },
+    { offset:oFin,          opacity:1, transform:T(dx,dy,taille,720) },
+    { offset:o(VOL+HOLD+VOL*0.78), opacity:1, transform:T(dx*0.10,dy*0.10-10,1.4,1170) },
+    { offset:1,             opacity:0, transform:T(0,0,1,1260) }
+  ],{ duration:D, easing:'cubic-bezier(.3,.7,.3,1)' });
+
+  halo.animate([
+    { offset:0,    opacity:0,   transform:'translate(-50%,-50%) scale(.3)' },
+    { offset:oArr, opacity:.30, transform:'translate(-50%,-50%) scale(1)' },
+    { offset:oFin, opacity:.22, transform:'translate(-50%,-50%) scale(1.1)' },
+    { offset:1,    opacity:0,   transform:'translate(-50%,-50%) scale(.5)' }
+  ],{ duration:D, easing:'ease-in-out' });
+
+  nm.animate([
+    { offset:0,        opacity:0, transform:'translate(-50%,-50%) translateY(14px) scale(.9)' },
+    { offset:oNomIn,   opacity:0, transform:'translate(-50%,-50%) translateY(14px) scale(.9)' },
+    { offset:oNomFull, opacity:1, transform:'translate(-50%,-50%) translateY(0) scale(1)' },
+    { offset:oNomOut,  opacity:1, transform:'translate(-50%,-50%) translateY(0) scale(1)' },
+    { offset:oNomEnd,  opacity:0, transform:'translate(-50%,-50%) translateY(-10px) scale(.96)' },
+    { offset:1,        opacity:0, transform:'translate(-50%,-50%) translateY(-10px) scale(.96)' }
+  ],{ duration:D, easing:'cubic-bezier(.2,.8,.2,1)' });
+
+  setTimeout(()=> sparks(n.s>=4?16:9, sx, sy), VOL);
+  setTimeout(()=> bandeau.classList.remove('vol'), D-260);
+  return D;
+  ding(a.kind);
+}
+
+/* =======================================================================
+   STREAMLABS
+   ======================================================================= */
+function connectStreamlabs(token){ if(!token||!CONFIG.alerte.actif) return;
+  const s=document.createElement('script'); s.src='https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.0.3/socket.io.js';
+  s.onload=()=>{ try{ const sl=io('https://sockets.streamlabs.com?token='+token,{transports:['websocket']});
+    sl.on('event',ev=>{ if(!ev||!ev.type) return; const ms=Array.isArray(ev.message)?ev.message:[ev.message]; ms.forEach(m=>{ if(m) onEvent(ev.type,m); }); });
+  }catch(e){} }; document.head.appendChild(s); }
+function onEvent(type,m){
+  const E=CONFIG.alerte.evenements, nom=(m.name||m.from||m.gifter||'ANON');
+  if(type==='follow'){ if(E.follow) annoncer({kind:'follow',nom}); }
+  else if(type==='donation'){ if(E.don){ const a=m.formatted_amount||m.amount; annoncer({kind:'don',nom,titre:a?('Don · '+a):'Don'}); } }
+  else if(type==='raid'||type==='host'){ if(E.raid) annoncer({kind:'raid',nom,titre:(type==='raid'?'Raid · ':'Host · ')+(m.raiders||m.viewers||0)+' viewers'}); }
+  else if(type==='bits'){ if(E.bits) annoncer({kind:'bits',nom,titre:(parseInt(m.amount,10)||0)+' bits'}); }
+  else if(type==='subscription'||type==='resub'){ if(!E.sub) return;
+    const st=(m.sub_type||'').toLowerCase();
+    if(st==='subgift'||st==='anonsubgift') annoncer({kind:'gift',nom:(m.gifter||nom)});
+    else if(st==='submysterygift') annoncer({kind:'gift',nom:(m.gifter||nom),titre:'Subs offerts ×'+(m.amount||1)});
+    else if(st==='resub'||(m.months&&m.months>1)) annoncer({kind:'resub',nom,titre:'Resub · '+(m.months||1)+' mois'});
+    else annoncer({kind:'sub',nom});
+  }
+}
+connectStreamlabs((new URLSearchParams(location.search).get('token'))||CONFIG.alerte.streamlabs.token);
+
+/* =======================================================================
+   VIEWERS (DecAPI, sans clé)
+   ======================================================================= */
+let lastN=null;
+function showViewers(n){ const box=document.getElementById('vw'), el=document.getElementById('vn');
+  el.textContent=n.toLocaleString('fr-FR'); box.classList.add('on');
+  if(lastN!==null && n!==lastN){ el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump'); } lastN=n; }
 function hideViewers(){ document.getElementById('vw').classList.remove('on'); lastN=null; }
 async function pollViewers(){
   if(!CONFIG.twitch){ hideViewers(); return; }
   try{
     const r=await fetch('https://decapi.me/twitch/viewercount/'+encodeURIComponent(CONFIG.twitch)+'?_='+Date.now(),{cache:'no-store'});
-    const txt=(await r.text()).trim();
-    if(/^\d+$/.test(txt)) showViewers(parseInt(txt,10));      // en direct
-    else if(CONFIG.demo) showViewers(42);                     // hors ligne + démo
-    else hideViewers();                                       // hors ligne -> masqué
-  }catch(e){
-    if(CONFIG.demo) showViewers(42); else hideViewers();      // pas de réseau / bloqué
-  }
+    const t=(await r.text()).trim();
+    if(/^\d+$/.test(t)) showViewers(parseInt(t,10)); else if(CONFIG.demo) showViewers(42); else hideViewers();
+  }catch(e){ if(CONFIG.demo) showViewers(42); else hideViewers(); }
 }
-pollViewers();
-setInterval(pollViewers, Math.max(30, CONFIG.refresh)*1000);
+pollViewers(); setInterval(pollViewers, Math.max(30,CONFIG.refresh)*1000);
+
+/* tests */
 window.testViewers=(n=137)=>showViewers(n);
+window.testFollow=(n='NEOxWOLF')=>onEvent('follow',{name:n});
+window.testSub=(n='KALYA_TV')=>onEvent('subscription',{name:n,sub_type:'sub'});
+window.testGift=(n='RAZBOTT',a=5)=>onEvent('subscription',{gifter:n,sub_type:'submysterygift',amount:a});
+window.testRaid=(n='POKIMANE',c=138)=>onEvent('raid',{name:n,raiders:c});
+window.testBits=(n='XQCOW',a=500)=>onEvent('bits',{name:n,amount:String(a)});
+if(CONFIG.demo){ setTimeout(()=>testFollow(),1200); setTimeout(()=>testSub(),8000); setTimeout(()=>testGift(),14800); }
 </script>
 </body>
 </html>
