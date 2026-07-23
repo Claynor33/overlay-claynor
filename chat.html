@@ -34,6 +34,8 @@
   .bdg.b-sub{ background:rgba(245,197,66,.16); color:var(--gold); }
   .bdg.b-str{ background:rgba(45,226,230,.18); color:var(--cyan); }
   .msg.sys{ font-style:italic; color:var(--ink-dim); font-size:16px; }
+  .msg.out{ animation:out .55s ease forwards; }
+  @keyframes out{ to{ opacity:0; transform:translateX(-10px); max-height:0; margin-bottom:-11px; } }
 
   @keyframes in{ to{ opacity:1; transform:translateX(0);} }
   @media (prefers-reduced-motion: reduce){ .msg{ animation-duration:.01ms; } }
@@ -55,6 +57,7 @@ const CONFIG={
   entete:false,         // true = réaffiche le bandeau "CHAT" en haut
   voyant:true,          // petit point rouge si le chat se déconnecte (false = rien du tout)
   max:14,               // nombre de messages affichés
+  duree:30,             // secondes avant disparition d'un message (0 = jamais)
   emotes:true,          // afficher les emotes Twitch
   badges:true,          // afficher MOD / VIP / SUB / STREAMER
   masquer:["nightbot","streamlabs","streamelements","moobot","fossabot"],  // bots ignorés
@@ -77,6 +80,16 @@ function applyTheme(a){ document.documentElement.style.setProperty('--cyan',a); 
 
 document.getElementById('head').classList.toggle('off', !CONFIG.entete);
 const list=document.getElementById('list');
+/* disparition automatique des messages trop anciens */
+function expire(){
+  if(!CONFIG.duree) return;
+  const lim=Date.now()-CONFIG.duree*1000;
+  Array.from(list.children).forEach(c=>{
+    if(c.classList.contains('out')) return;
+    if(+(c.dataset.t||0) < lim){ c.classList.add('out'); setTimeout(()=>c.remove(),600); }
+  });
+}
+setInterval(expire, 1000);
 function trim(){ while(list.children.length>CONFIG.max) list.removeChild(list.firstChild); }
 
 /* rendu du texte + emotes Twitch */
@@ -112,10 +125,11 @@ function addMsg(tags, user, text){
   const el=document.createElement('div'); el.className='msg';
   if(tags['id']) el.dataset.id=tags['id'];
   el.dataset.user=(user||'').toLowerCase();
+  el.dataset.t=Date.now();
   el.innerHTML=badges(tags)+'<span class="u" style="color:'+col+'">'+esc(name)+'</span><span class="sep">:</span><span class="mt">'+body(text,tags['emotes'])+'</span>';
   list.appendChild(el); trim();
 }
-function addSys(t){ const el=document.createElement('div'); el.className='msg sys'; el.textContent=t; list.appendChild(el); trim(); }
+function addSys(t){ const el=document.createElement('div'); el.className='msg sys'; el.dataset.t=Date.now(); el.textContent=t; list.appendChild(el); trim(); }
 /* modération : on retire ce qui est supprimé côté Twitch */
 function clearUser(u){ Array.from(list.children).forEach(c=>{ if(c.dataset.user===(u||'').toLowerCase()) c.remove(); }); }
 function clearMsg(id){ Array.from(list.children).forEach(c=>{ if(c.dataset.id===id) c.remove(); }); }
