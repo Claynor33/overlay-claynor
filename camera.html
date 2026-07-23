@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700&family=Rajdhani:wght@600;700&display=swap" rel="stylesheet">
 <style>
-  :root{ --cyan:#2de2e6; --cyan-deep:#0fa3b1; --gold:#f5c542; --ink:#eaf6f7; --ink-dim:#6f858c; --line:rgba(45,226,230,.28); }
+  :root{ --plat:#e8f4ff; --plat-deep:#9fb4c6; --pglow:rgba(232,244,255,.5); --cyan:#2de2e6; --cyan-deep:#0fa3b1; --gold:#f5c542; --ink:#eaf6f7; --ink-dim:#6f858c; --line:rgba(45,226,230,.28); }
   *{ margin:0; padding:0; box-sizing:border-box; }
   html,body{ width:100%; height:100%; overflow:hidden; background:transparent; font-family:'Rajdhani',sans-serif; color:var(--ink); }
 
@@ -30,6 +30,17 @@
   .cam-view .n{ font-family:'Chakra Petch'; font-weight:700; font-size:14px; line-height:1; color:var(--ink); letter-spacing:.02em; text-shadow:0 0 12px rgba(45,226,230,.35); font-variant-numeric:tabular-nums; }
   .cam-view .n.bump{ animation:bump .5s cubic-bezier(.2,1.4,.3,1); }
 
+  /* platines (bas gauche) */
+  .cam-plat{ position:absolute; left:0; bottom:0; display:flex; align-items:center; gap:7px; height:24px; padding:0 13px 0 12px;
+    background:linear-gradient(90deg, rgba(10,15,19,.92), rgba(10,15,19,.30));
+    z-index:2; opacity:0; transform:translateX(-8px); transition:opacity .35s ease, transform .35s ease; }
+  .cam-plat.on{ opacity:1; transform:translateX(0); }
+  .cam-plat .tico{ width:15px; height:15px; display:inline-flex; filter:drop-shadow(0 0 6px var(--pglow)); }
+  .cam-plat .tico svg{ width:100%; height:100%; }
+  .cam-plat .tico .lt{ fill:var(--plat); stroke:var(--plat); } .cam-plat .tico .dk{ fill:var(--plat-deep); }
+  .cam-plat .n{ font-family:'Chakra Petch'; font-weight:700; font-size:14px; line-height:1; color:var(--plat); letter-spacing:.02em; text-shadow:0 0 10px var(--pglow); font-variant-numeric:tabular-nums; }
+  .cam-plat .n.bump{ animation:bump .5s cubic-bezier(.2,1.4,.3,1); }
+
   .b{ position:absolute; width:22px; height:22px; z-index:3; }
   .b::before,.b::after{ content:''; position:absolute; background:var(--cyan); box-shadow:0 0 8px var(--cyan); }
   .b::before{ width:100%; height:2px; } .b::after{ width:2px; height:100%; }
@@ -47,7 +58,8 @@
     <div class="cam-edge"></div>
     <div class="cam-label"><span class="live"></span><span id="lbl">CLAYNOR</span></div>
     <div class="cam-view" id="vw"><span class="eye"></span><span class="n" id="vn">0</span></div>
-    <span class="b tr"></span><span class="b br"></span><span class="b bl"></span>
+    <div class="cam-plat" id="pl"><span class="tico"></span><span class="n" id="pn">0</span></div>
+    <span class="b tr"></span><span class="b br"></span>
   </div>
 
 <script>
@@ -56,7 +68,12 @@ const CONFIG={
   accent:"#2de2e6",
   twitch:"claynor",        // ta chaîne Twitch (en minuscules) — vide "" = pas de compteur
   refresh:60,              // secondes entre chaque relevé (min. 30)
-  demo:false                // true = affiche un nombre d'exemple si hors ligne (mets false pour OBS)
+  demo:false,               // true = affiche un nombre d'exemple si hors ligne (mets false pour OBS)
+  platines:{
+    actif:true,            // affiche le compteur de platines en bas à gauche
+    depart:0,              // valeur de départ (1re fois seulement) — ensuite modifiable en direct
+    auto:true              // +1 automatique quand un jeu atteint 100 %
+  }
 };
 
 document.getElementById('lbl').textContent=CONFIG.label;
@@ -73,6 +90,38 @@ function readShared(){ try{const r=localStorage.getItem(SKEY);return r?JSON.pars
   if(bc) bc.addEventListener('message',function(ev){ if(ev.data&&ev.data.kind==='state'&&ev.data.s.accent) applyTheme(ev.data.s.accent); });
   setInterval(function(){ var s=readShared(); if(s&&(s.v||0)>lv){ lv=s.v; if(s.accent) applyTheme(s.accent); } },400);
 })();
+
+/* ---- compteur de platines (bas gauche) ---- */
+const PK="wPlatines_v1";
+document.querySelector('.cam-plat .tico').innerHTML='<svg viewBox="0 0 24 24" fill="none"><path class="lt" d="M6 4h12v3a6 6 0 0 1-12 0V4Z"/><path class="lt" d="M18 4h3v2a3 3 0 0 1-3 3M6 4H3v2a3 3 0 0 0 3 3" stroke-width="1.6" stroke-linecap="round" fill="none"/><path class="dk" d="M10 13h4v3h-4z"/><path class="lt" d="M8 19h8v1.5H8z"/><path class="dk" d="M9.5 16.5h5V19h-5z"/></svg>';
+let pdata=ploadP();
+function ploadP(){ try{const r=localStorage.getItem(PK); const d=r?JSON.parse(r):null; return d||{n:CONFIG.platines.depart,actif:true,faits:{}};}catch(e){return {n:CONFIG.platines.depart,actif:true,faits:{}};} }
+function psave(){ try{localStorage.setItem(PK,JSON.stringify(pdata));}catch(e){} }
+let plast=null;
+function prender(anim){
+  const box=document.getElementById('pl'), el=document.getElementById('pn');
+  box.classList.toggle('on', !!CONFIG.platines.actif);
+  el.textContent=pdata.n;
+  if(anim && plast!==null && pdata.n!==plast){ el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump'); }
+  plast=pdata.n;
+}
+function psetP(v){ pdata.n=Math.max(0,v); psave(); prender(true); }
+window.setPlatines=(v)=>psetP(v);
+window.addPlatine=()=>psetP(pdata.n+1);
+window.resetPlatines=()=>{ pdata={n:CONFIG.platines.depart,actif:true,faits:{}}; psave(); plast=null; prender(false); };
+/* +1 auto quand un jeu atteint 100 % (une seule fois par jeu) */
+let ptTs=0; try{ const r=localStorage.getItem('hud_celebrate'); if(r) ptTs=JSON.parse(r).ts||0; }catch(e){}
+function ponTrophy(p){
+  if(!CONFIG.platines.auto||!p||!p.ts||p.ts<=ptTs) return; ptTs=p.ts;
+  if(!(p.total>0 && p.got>=p.total)) return;
+  const s=readShared(), jeu=(s&&s.jeu)?s.jeu:'—';
+  if(pdata.faits[jeu]) return; pdata.faits[jeu]=true; psetP(pdata.n+1);
+}
+try{ const bcp=new BroadcastChannel('hud-claynor'); bcp.addEventListener('message',e=>{ if(e.data&&e.data.kind==='trophy') ponTrophy(e.data); }); }catch(e){}
+setInterval(()=>{ try{ const r=localStorage.getItem('hud_celebrate'); if(r) ponTrophy(JSON.parse(r)); }catch(e){} },400);
+/* synchro si le nombre est modifié depuis une autre source */
+setInterval(()=>{ try{ const r=localStorage.getItem(PK); if(r){ const d=JSON.parse(r); if(d && d.n!==pdata.n){ pdata=d; prender(true); } } }catch(e){} },800);
+prender(false);
 
 /* ---- compteur de viewers (DecAPI, sans clé) ---- */
 let lastN=null;
