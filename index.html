@@ -55,6 +55,7 @@
       <div id="widgets"></div>
       <div class="sec-title">Scènes tout-en-un</div>
       <div id="scenes"></div>
+      <div class="note" style="margin-bottom:14px"><b>Caméra :</b> choisis <b>carrée</b> OU <b>ronde</b> — les deux partagent les mêmes trophées, platines et profils de jeu. En version ronde, applique le filtre « Masque/Fusion d'image » sur ta webcam avec <code>masque-cercle-16-9.png</code> (fourni dans le dépôt).</div>
       <div class="note">Pour chaque source Navigateur dans OBS : « URL » = colle l'adresse copiée ; mets la <b>taille</b> indiquée. « Copier » met l'URL dans le presse-papiers ; « Ouvrir » l'affiche dans un onglet pour vérifier.</div>
     </div>
 
@@ -63,7 +64,7 @@
       <ol class="steps">
         <li><code>celebration</code> tout en haut (plein écran, invisible au repos)</li>
         <li><code>alertes</code>, puis tes widgets (<code>jeu-trophees</code>, <code>soutiens</code>, <code>objectif</code>, <code>camera</code>)</li>
-        <li>Ta <b>webcam</b> juste sous le widget <code>camera</code>, calée dans le cadre</li>
+        <li>Ta <b>webcam</b> juste sous le widget <code>camera</code> (ou <code>camera-ronde</code>), calée dans le cadre</li>
         <li>La <b>capture du jeu</b> tout en bas</li>
       </ol>
       <div class="note">Change de jeu via clic droit sur <code>jeu-trophees</code> → Interagir → champ « Jeu » → OK. Toute l'interface se recolore instantanément.</div>
@@ -72,13 +73,15 @@
 
 <script>
   const WIDGETS=[
-    {n:"Caméra", f:"camera.html", s:"360 × 203", tok:false},
+    {n:"Caméra (carrée)", f:"camera.html", s:"780 × 503", tok:true},
     {n:"Jeu & trophées", f:"jeu-trophees.html", s:"360 × 230", tok:false},
     {n:"Derniers soutiens", f:"soutiens.html", s:"320 × 180", tok:true},
     {n:"Objectif", f:"objectif.html", s:"280 × 200", tok:true},
     {n:"Alertes", f:"alertes.html", s:"600 × 150", tok:true},
     {n:"Chat Twitch", f:"chat.html", s:"600 × 770", tok:false},
     {n:"Compteur de morts", f:"morts.html", s:"260 × 200", tok:false},
+    {n:"Compteur de platines", f:"platines.html", s:"280 × 200", tok:false},
+    {n:"Caméra (ronde)", f:"camera-ronde.html", s:"640 × 780", tok:true},
     {n:"Célébration trophée", f:"celebration.html", s:"420 × 110", tok:false}
   ];
   const SCENES=[
