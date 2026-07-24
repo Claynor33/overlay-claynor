@@ -101,8 +101,8 @@ const CONFIG={
 
   alerte:{
     actif:true, son:true,
-    duree:9,              // secondes pendant lesquelles le pseudo reste affiché
-    vol:2,                // secondes du trajet aller (et du retour)
+    duree:3.4,              // secondes pendant lesquelles le pseudo reste affiché
+    vol:1.2,                // secondes du trajet aller (et du retour)
     streamlabs:{ token:"" },
     evenements:{ follow:true, sub:true, don:true, raid:true, bits:true }
   }
@@ -235,34 +235,34 @@ function jouer(a){
   const T=(tx,ty,s,rot)=>'translate(-50%,-50%) translate('+tx+'px,'+ty+'px) scale('+s+') rotateY('+rot+'deg)';
 
   fly.animate([
-    { offset:0,             opacity:0, transform:T(0,0,1,0) },
-    { offset:o(VOL*0.22),   opacity:1, transform:T(dx*0.12,dy*0.12-14,1.5,90) },
-    { offset:oArr,          opacity:1, transform:T(dx,dy,taille,540) },
-    { offset:oFin,          opacity:1, transform:T(dx,dy,taille,720) },
-    { offset:o(VOL+HOLD+VOL*0.78), opacity:1, transform:T(dx*0.10,dy*0.10-10,1.4,1170) },
+    { offset:0,             opacity:0, transform:T(0,0,1,0),                          easing:'cubic-bezier(.3,.7,.3,1)' },
+    { offset:o(VOL*0.22),   opacity:1, transform:T(dx*0.12,dy*0.12-14,1.5,90),        easing:'cubic-bezier(.25,.6,.25,1)' },
+    { offset:oArr,          opacity:1, transform:T(dx,dy,taille,540),                  easing:'linear' },
+    { offset:oFin,          opacity:1, transform:T(dx,dy,taille,720),                  easing:'cubic-bezier(.4,0,.6,1)' },
+    { offset:o(VOL+HOLD+VOL*0.78), opacity:1, transform:T(dx*0.10,dy*0.10-10,1.4,1170), easing:'linear' },
     { offset:1,             opacity:0, transform:T(0,0,1,1260) }
-  ],{ duration:D, easing:'cubic-bezier(.3,.7,.3,1)' });
+  ],{ duration:D, easing:'linear' });
 
   halo.animate([
-    { offset:0,    opacity:0,   transform:'translate(-50%,-50%) scale(.3)' },
-    { offset:oArr, opacity:.30, transform:'translate(-50%,-50%) scale(1)' },
-    { offset:oFin, opacity:.22, transform:'translate(-50%,-50%) scale(1.1)' },
+    { offset:0,    opacity:0,   transform:'translate(-50%,-50%) scale(.3)',  easing:'ease-out' },
+    { offset:oArr, opacity:.30, transform:'translate(-50%,-50%) scale(1)',   easing:'linear' },
+    { offset:oFin, opacity:.22, transform:'translate(-50%,-50%) scale(1.1)', easing:'ease-in' },
     { offset:1,    opacity:0,   transform:'translate(-50%,-50%) scale(.5)' }
-  ],{ duration:D, easing:'ease-in-out' });
+  ],{ duration:D, easing:'linear' });
 
   nm.animate([
-    { offset:0,        opacity:0, transform:'translate(-50%,-50%) translateY(14px) scale(.9)' },
-    { offset:oNomIn,   opacity:0, transform:'translate(-50%,-50%) translateY(14px) scale(.9)' },
-    { offset:oNomFull, opacity:1, transform:'translate(-50%,-50%) translateY(0) scale(1)' },
-    { offset:oNomOut,  opacity:1, transform:'translate(-50%,-50%) translateY(0) scale(1)' },
-    { offset:oNomEnd,  opacity:0, transform:'translate(-50%,-50%) translateY(-10px) scale(.96)' },
+    { offset:0,        opacity:0, transform:'translate(-50%,-50%) translateY(14px) scale(.9)', easing:'linear' },
+    { offset:oNomIn,   opacity:0, transform:'translate(-50%,-50%) translateY(14px) scale(.9)', easing:'cubic-bezier(.2,.9,.3,1)' },
+    { offset:oNomFull, opacity:1, transform:'translate(-50%,-50%) translateY(0) scale(1)',     easing:'linear' },
+    { offset:oNomOut,  opacity:1, transform:'translate(-50%,-50%) translateY(0) scale(1)',     easing:'ease-in' },
+    { offset:oNomEnd,  opacity:0, transform:'translate(-50%,-50%) translateY(-10px) scale(.96)', easing:'linear' },
     { offset:1,        opacity:0, transform:'translate(-50%,-50%) translateY(-10px) scale(.96)' }
-  ],{ duration:D, easing:'cubic-bezier(.2,.8,.2,1)' });
+  ],{ duration:D, easing:'linear' });
 
   setTimeout(()=> sparks(n.s>=4?16:9, sx, sy), VOL);
   setTimeout(()=> bandeau.classList.remove('vol'), D-260);
-  return D;
   ding(a.kind);
+  return D;
 }
 
 /* =======================================================================
