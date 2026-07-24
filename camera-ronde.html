@@ -137,8 +137,8 @@ const CONFIG={
   twitch:"claynor",
   refresh:60,
 
-  cercle:{ diametre:340, marge:150 },   // Ø de la caméra + espace autour (animation)
-  anneau:{ epaisseur:7, ecart:16 },     // épaisseur de l'anneau et distance au bord de la cam
+  cercle:{ diametre:240, marge:100 },   // Ø de la caméra + espace autour (animation)
+  anneau:{ epaisseur:6, ecart:10 },     // épaisseur de l'anneau et distance au bord de la cam
 
   infos:{ actif:true },                 // nom du jeu + compteur sous le cercle
   platines:{ actif:true, depart:0, auto:true },
@@ -203,7 +203,7 @@ document.body.classList.toggle('preview', CONFIG.apercu);
   const tk=document.getElementById('ticks'); tk.setAttribute('width',S); tk.setAttribute('height',S);
   tk.setAttribute('viewBox','0 0 '+S+' '+S); tk.style.left=CX+'px'; tk.style.top=CY+'px';
   let g='';
-  for(let i=0;i<60;i++){ if(i%5) continue; const a=(i/60)*Math.PI*2-Math.PI/2, r1=RA+11, r2=RA+17;
+  for(let i=0;i<60;i++){ if(i%5) continue; const a=(i/60)*Math.PI*2-Math.PI/2, r1=RA+8, r2=RA+13;
     g+='<line x1="'+(c+Math.cos(a)*r1).toFixed(1)+'" y1="'+(c+Math.sin(a)*r1).toFixed(1)+'" x2="'+(c+Math.cos(a)*r2).toFixed(1)+'" y2="'+(c+Math.sin(a)*r2).toFixed(1)+'"/>'; }
   tk.innerHTML=g;
 
@@ -214,7 +214,7 @@ document.body.classList.toggle('preview', CONFIG.apercu);
   const pp=pos(-132,RA+2); const p=document.getElementById('pl'); p.style.left=pp.x+'px'; p.style.top=pp.y+'px';
 
   const inf=document.getElementById('infos');
-  inf.style.left=CX+'px'; inf.style.top=(CY+RA+34)+'px';
+  inf.style.left=CX+'px'; inf.style.top=(CY+RA+26)+'px';
   inf.style.display=CONFIG.infos.actif?'':'none';
 })();
 
