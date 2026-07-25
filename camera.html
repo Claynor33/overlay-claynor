@@ -95,7 +95,7 @@ const CONFIG={
 
   /* espace libre autour du cadre, nécessaire à l'animation.
      Taille de la source OBS = 360 + 2*x  par  203 + 2*y  */
-  marges:{ x:210, y:150 },
+  marges:{ x:120, y:90 },
 
   platines:{ actif:true, depart:0, auto:true },
 
@@ -294,6 +294,7 @@ connectStreamlabs((new URLSearchParams(location.search).get('token'))||CONFIG.al
    ======================================================================= */
 let lastN=null;
 function showViewers(n){ const box=document.getElementById('vw'), el=document.getElementById('vn');
+  if(!n){ hideViewers(); return; }
   el.textContent=n.toLocaleString('fr-FR'); box.classList.add('on');
   if(lastN!==null && n!==lastN){ el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump'); } lastN=n; }
 function hideViewers(){ document.getElementById('vw').classList.remove('on'); lastN=null; }
