@@ -26,8 +26,11 @@
   .trophy-count .got.pop{ animation:pop .55s cubic-bezier(.2,1.4,.3,1); }
   .trophy-count .slash{ font-size:16px; color:var(--ink-dim); } .trophy-count .tot{ font-size:16px; color:var(--ink-dim); }
   .trophy-pct{ font-family:'Rajdhani'; font-weight:700; font-size:12px; letter-spacing:.16em; color:var(--gold); text-shadow:0 0 10px var(--glow); transition:color .4s ease; }
-  .bar-progress{ position:absolute; left:0; right:0; bottom:0; height:3px; background:rgba(255,255,255,.06); z-index:3; }
-  .bar-progress-fill{ position:absolute; left:0; top:0; bottom:0; width:0; background:linear-gradient(90deg,var(--gold-deep),var(--gold)); box-shadow:0 0 10px var(--glow); transition:width 1.1s cubic-bezier(.2,.8,.2,1), background .4s ease; }
+  .bar-progress{ position:absolute; left:0; right:0; bottom:0; height:3px; background:rgba(255,255,255,.06); z-index:3; overflow:visible; }
+  .bar-dlc{ position:absolute; top:0; bottom:0; display:none; z-index:1; background:repeating-linear-gradient(45deg, rgba(169,112,255,.5) 0 3px, rgba(169,112,255,.14) 3px 7px); }
+  .bar-plat{ position:absolute; bottom:-2px; width:2px; height:11px; margin-left:-1px; display:none; z-index:5; background:#e2f0ff; box-shadow:0 0 8px #cfe6ff; }
+  .bar-plat::after{ content:''; position:absolute; left:50%; top:-6px; width:7px; height:7px; transform:translateX(-50%) rotate(45deg); background:#eaf6ff; box-shadow:0 0 8px #cfe6ff; }
+  .bar-progress-fill{ position:absolute; left:0; top:0; bottom:0; width:0; z-index:2; background:linear-gradient(90deg,var(--gold-deep),var(--gold)); box-shadow:0 0 10px var(--glow); transition:width 1.1s cubic-bezier(.2,.8,.2,1), background .4s ease; }
   #ctrl{ left:0; top:74px; width:320px; }
 
   #ctrl{ position:absolute; z-index:80; display:flex; flex-direction:column; gap:8px; padding:12px 14px; background:rgba(6,11,14,.96); border:1px solid var(--line); border-radius:10px; box-shadow:0 12px 40px rgba(0,0,0,.6); opacity:0; pointer-events:none; transition:opacity .18s ease; }
@@ -66,12 +69,13 @@
     <svg class="trophy-ico" viewBox="0 0 24 24" fill="none"><path class="lt" d="M6 4h12v3a6 6 0 0 1-12 0V4Z"/><path class="lt" d="M18 4h3v2a3 3 0 0 1-3 3M6 4H3v2a3 3 0 0 0 3 3" stroke-width="1.6" stroke-linecap="round" fill="none"/><path class="dk" d="M10 13h4v3h-4z"/><path class="lt" d="M8 19h8v1.5H8z"/><path class="dk" d="M9.5 16.5h5V19h-5z"/></svg>
     <div class="trophy-count"><span class="got" id="tGot">0</span><span class="slash">/</span><span class="tot" id="tTot">41</span></div>
   </div><div class="trophy-pct" id="tPct">0 %</div></div>
-  <div class="bar-progress"><div class="bar-progress-fill" id="tBar"></div></div>
+  <div class="bar-progress"><div class="bar-dlc" id="tDlc"></div><div class="bar-progress-fill" id="tBar"></div><div class="bar-plat" id="tPlat"></div></div>
 </div>
 <div id="ctrl">
   <div class="title">Jeu & trophées</div>
   <div class="row"><span class="lbl">Trophées</span><button data-a="tm">-</button><span class="val"><span id="cG">3</span>/<span id="cT">41</span></span><button class="gold" data-a="tp">+</button></div>
   <div class="row"><span class="lbl">Total</span><button data-a="om">-</button><span class="val" id="cT2">41</span><button data-a="op">+</button></div>
+  <div class="row"><span class="lbl">Platine</span><button data-a="lm">-</button><span class="val" id="cL">0</span><button data-a="lp">+</button></div>
   <div class="row"><span class="lbl">Jeu</span><input id="cGame" type="text" placeholder="Nom du jeu"><button data-a="gk">OK</button></div>
   <div class="hint">+ = animation trophée · le jeu recharge ses trophées + sa couleur</div>
 </div>
@@ -106,7 +110,7 @@ function loadP(){ try{const r=localStorage.getItem(K+'_p');return r?JSON.parse(r
 function saveP(){ try{localStorage.setItem(K+'_p',JSON.stringify(profils));}catch(e){} }
 function pop(el){ el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop'); }
 function countUp(node,t,d){const s=performance.now();(function f(n){const p=Math.min((n-s)/d,1);node.textContent=Math.round((1-Math.pow(1-p,3))*t);if(p<1)requestAnimationFrame(f);})(performance.now());}
-function publish(){ writeShared({ jeu:state.jeu.nom, accent:accentGlobal(), trophees:{obtenus:state.trophees.obtenus,total:state.trophees.total} }); try{ window.__pubRemoteState&&window.__pubRemoteState(); }catch(e){} }
+function publish(){ writeShared({ jeu:state.jeu.nom, accent:accentGlobal(), trophees:{obtenus:state.trophees.obtenus,total:state.trophees.total,platine:state.trophees.platine||0} }); try{ window.__pubRemoteState&&window.__pubRemoteState(); }catch(e){} }
 function fireCelebrate(){ const p={got:state.trophees.obtenus,total:state.trophees.total,ts:Date.now()}; try{ bcHud&&bcHud.postMessage(Object.assign({kind:'trophy'},p)); }catch(e){} try{ localStorage.setItem('hud_celebrate',JSON.stringify(p)); }catch(e){} }
 
 /* ===== PALIERS (identiques au widget Célébration) ===== */
@@ -156,6 +160,14 @@ function fitNom(){
 }
 try{ if(document.fonts&&document.fonts.ready) document.fonts.ready.then(()=>fitNom()); }catch(e){}
 window.addEventListener('resize', fitNom);
+function barPlatine(total, plat){
+  const dlc=document.getElementById('tDlc'), mk=document.getElementById('tPlat');
+  if(!dlc||!mk) return;
+  if(plat>0 && plat<total){ const x=plat/total*100;
+    mk.style.left=x+'%'; mk.style.display='block';
+    dlc.style.left=x+'%'; dlc.style.width=(100-x)+'%'; dlc.style.display='block';
+  }else{ mk.style.display='none'; dlc.style.display='none'; }
+}
 function render(){
   document.getElementById('gameName').firstElementChild.textContent = nomAffiche(state.jeu.nom);
   requestAnimationFrame(fitNom);
@@ -164,18 +176,22 @@ function render(){
   applyTier(g,t); applyTheme(accentGlobal());
   const pct=t?Math.round(g/t*100):0; document.getElementById('tPct').textContent=pct+' %';
   requestAnimationFrame(()=>document.getElementById('tBar').style.width=pct+'%');
+  barPlatine(t, state.trophees.platine||0);
+  document.getElementById('cL').textContent=state.trophees.platine||0;
   if(prev===null) countUp(el,g,900); else if(g>prev){ el.textContent=g; pop(el); fireCelebrate(); } else el.textContent=g; prev=g;
   document.getElementById('cG').textContent=g; document.getElementById('cT').textContent=t; document.getElementById('cT2').textContent=t;
 }
-function saveCur(){ profils[state.jeu.nom]={obtenus:state.trophees.obtenus,total:state.trophees.total}; saveP(); }
+function saveCur(){ profils[state.jeu.nom]={obtenus:state.trophees.obtenus,total:state.trophees.total,platine:state.trophees.platine||0}; saveP(); }
 function commit(){ saveCur(); save(); render(); publish(); }
-function changeGame(n){ n=(n||'').trim(); if(!n||n===state.jeu.nom) return; saveCur(); const p=profils[n]||{obtenus:0,total:CONFIG.trophees.total}; state.jeu.nom=n; state.trophees.obtenus=p.obtenus; state.trophees.total=p.total; profils[n]={...p}; saveP(); save(); prev=state.trophees.obtenus; render(); sync(); publish(); }
+function changeGame(n){ n=(n||'').trim(); if(!n||n===state.jeu.nom) return; saveCur(); const p=profils[n]||{obtenus:0,total:CONFIG.trophees.total,platine:0}; state.jeu.nom=n; state.trophees.obtenus=p.obtenus; state.trophees.total=p.total; state.trophees.platine=p.platine||0; profils[n]={...p}; saveP(); save(); prev=state.trophees.obtenus; render(); sync(); publish(); }
 function sync(){ document.getElementById('cGame').value=state.jeu.nom; }
 document.getElementById('ctrl').addEventListener('click',e=>{ const a=e.target.getAttribute('data-a'); if(!a) return; const S=state.trophees;
   if(a==='tp'){S.obtenus=Math.min(S.obtenus+1,S.total);commit();}
   if(a==='tm'){S.obtenus=Math.max(S.obtenus-1,0);commit();}
   if(a==='op'){S.total++;commit();}
   if(a==='om'){S.total=Math.max(S.total-1,S.obtenus);commit();}
+  if(a==='lp'){S.platine=Math.min((S.platine||0)+1,S.total);commit();}
+  if(a==='lm'){S.platine=Math.max((S.platine||0)-1,0);commit();}
   if(a==='gk'){changeGame(document.getElementById('cGame').value);}
 });
 document.addEventListener('keydown',e=>{ if(e.target.tagName==='INPUT')return; const S=state.trophees;
@@ -186,6 +202,7 @@ const ctrl=document.getElementById('ctrl'); let hideT;
 function wake(){ if(!ctrl) return; ctrl.classList.add('show'); clearTimeout(hideT); hideT=setTimeout(()=>ctrl.classList.remove('show'),3500); }
 document.addEventListener('mousemove', wake); document.addEventListener('click', wake);
 
+if(state.trophees.platine==null) state.trophees.platine=0;
 render(); sync(); applyTheme(accentGlobal()); publish();
 
 
