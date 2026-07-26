@@ -82,8 +82,11 @@
   .trophy-count .got.pop{ animation:pop .55s cubic-bezier(.2,1.4,.3,1); }
   .trophy-count .slash{ font-size:16px; color:var(--ink-dim); } .trophy-count .tot{ font-size:16px; color:var(--ink-dim); }
   .trophy-pct{ font-family:'Rajdhani'; font-weight:700; font-size:12px; letter-spacing:.16em; color:var(--gold); text-shadow:0 0 10px var(--glow); transition:color .4s ease; }
-  .bar-progress{ position:absolute; left:0; right:0; bottom:0; height:3px; background:rgba(255,255,255,.06); z-index:3; }
-  .bar-progress-fill{ position:absolute; left:0; top:0; bottom:0; width:0; background:linear-gradient(90deg,var(--gold-deep),var(--gold)); box-shadow:0 0 10px var(--glow); transition:width 1.1s cubic-bezier(.2,.8,.2,1), background .4s ease; }
+  .bar-progress{ position:absolute; left:0; right:0; bottom:0; height:3px; background:rgba(255,255,255,.06); z-index:3; overflow:visible; }
+  .bar-dlc{ position:absolute; top:0; bottom:0; display:none; z-index:1; background:repeating-linear-gradient(45deg, rgba(169,112,255,.5) 0 3px, rgba(169,112,255,.14) 3px 7px); }
+  .bar-plat{ position:absolute; bottom:-2px; width:2px; height:11px; margin-left:-1px; display:none; z-index:5; background:#e2f0ff; box-shadow:0 0 8px #cfe6ff; }
+  .bar-plat::after{ content:''; position:absolute; left:50%; top:-6px; width:7px; height:7px; transform:translateX(-50%) rotate(45deg); background:#eaf6ff; box-shadow:0 0 8px #cfe6ff; }
+  .bar-progress-fill{ position:absolute; left:0; top:0; bottom:0; width:0; z-index:2; background:linear-gradient(90deg,var(--gold-deep),var(--gold)); box-shadow:0 0 10px var(--glow); transition:width 1.1s cubic-bezier(.2,.8,.2,1), background .4s ease; }
 
   /* =================== ALERTE (trophée / follow / sub…) =================== */
   #toast{ position:absolute; top:130px; left:50%; z-index:60; display:flex; align-items:center; gap:15px; padding:15px 30px;
@@ -170,7 +173,7 @@
           </div>
           <div class="trophy-pct" id="tPct">0 %</div>
         </div>
-        <div class="bar-progress"><div class="bar-progress-fill" id="tBar"></div></div>
+        <div class="bar-progress"><div class="bar-dlc" id="tDlc"></div><div class="bar-progress-fill" id="tBar"></div><div class="bar-plat" id="tPlat"></div></div>
       </div>
     </div>
 
@@ -303,6 +306,14 @@ function fitNom(){
 }
 try{ if(document.fonts&&document.fonts.ready) document.fonts.ready.then(()=>fitNom()); }catch(e){}
 window.addEventListener('resize', fitNom);
+function barPlatine(total, plat){
+  const dlc=document.getElementById('tDlc'), mk=document.getElementById('tPlat');
+  if(!dlc||!mk) return;
+  if(plat>0 && plat<total){ const x=plat/total*100;
+    mk.style.left=x+'%'; mk.style.display='block';
+    dlc.style.left=x+'%'; dlc.style.width=(100-x)+'%'; dlc.style.display='block';
+  }else{ mk.style.display='none'; dlc.style.display='none'; }
+}
 function render(){
   document.body.classList.toggle('preview', CONFIG.modePreview);
   document.getElementById('camLabel').textContent = CONFIG.cam.label;
@@ -314,6 +325,7 @@ function render(){
   const pct = tot ? Math.round((got/tot)*100) : 0;
   document.getElementById('tPct').textContent = pct+' %';
   requestAnimationFrame(()=> document.getElementById('tBar').style.width = pct+'%');
+  barPlatine(tot, (state.trophees.platine)||0);
   if(prevGot === null) countUp(gotEl, got, 900);
   else if(got > prevGot){ gotEl.textContent = got; popTrophy(gotEl); celebrate(); }
   else gotEl.textContent = got;
@@ -491,8 +503,8 @@ if(CONFIG.modePreview){
 (function(){
   var SKEY='hud_shared_v1', lv=0; var bc=null; try{bc=new BroadcastChannel('hud-claynor');}catch(e){}
   function rd(){ try{var r=localStorage.getItem(SKEY);return r?JSON.parse(r):null;}catch(e){return null;} }
-  function pub(){ try{ var s=rd()||{}; s.jeu=state.jeu.nom; s.accent=accentGlobal(); s.trophees={obtenus:state.trophees.obtenus,total:state.trophees.total}; s.v=Date.now(); lv=s.v; localStorage.setItem(SKEY,JSON.stringify(s)); bc&&bc.postMessage({kind:'state',s}); }catch(e){} }
-  function ap(s){ if(!s) return; try{ if(s.jeu!==undefined) state.jeu.nom=s.jeu; if(s.trophees){ state.trophees.obtenus=s.trophees.obtenus; state.trophees.total=s.trophees.total; } var acc=(typeof accentGlobal==='function')?accentGlobal():(s.accent||accentFor(state.jeu.nom)||'#2de2e6'); document.documentElement.style.setProperty('--cyan',acc); document.documentElement.style.setProperty('--cyan-deep',shade(acc,-0.4)); prevGot=state.trophees.obtenus; if(typeof render==='function') render(); if(typeof syncInputs==='function') syncInputs(); }catch(e){} }
+  function pub(){ try{ var s=rd()||{}; s.jeu=state.jeu.nom; s.accent=accentGlobal(); s.trophees={obtenus:state.trophees.obtenus,total:state.trophees.total,platine:state.trophees.platine||0}; s.v=Date.now(); lv=s.v; localStorage.setItem(SKEY,JSON.stringify(s)); bc&&bc.postMessage({kind:'state',s}); }catch(e){} }
+  function ap(s){ if(!s) return; try{ if(s.jeu!==undefined) state.jeu.nom=s.jeu; if(s.trophees){ state.trophees.obtenus=s.trophees.obtenus; state.trophees.total=s.trophees.total; if(s.trophees.platine!==undefined) state.trophees.platine=s.trophees.platine; } var acc=(typeof accentGlobal==='function')?accentGlobal():(s.accent||accentFor(state.jeu.nom)||'#2de2e6'); document.documentElement.style.setProperty('--cyan',acc); document.documentElement.style.setProperty('--cyan-deep',shade(acc,-0.4)); prevGot=state.trophees.obtenus; if(typeof render==='function') render(); if(typeof syncInputs==='function') syncInputs(); }catch(e){} }
   window.__pubShared=pub;
   var init=rd(); if(init){ lv=init.v||0; ap(init); }
   if(bc) bc.addEventListener('message',function(ev){ if(ev.data&&ev.data.kind==='state'){ lv=Math.max(lv,ev.data.s.v||0); ap(ev.data.s); } });

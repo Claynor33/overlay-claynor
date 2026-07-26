@@ -166,7 +166,7 @@ document.getElementById('big').textContent=CONFIG.grand;
 document.getElementById('sub').textContent=CONFIG.sous;
 setAccent(CONFIG.accent);
 fit();
-connectStreamlabs(CONFIG.streamlabs.token);
+connectStreamlabs((new URLSearchParams(location.search).get('token'))||CONFIG.streamlabs.token);
 if(CONFIG.modePreview){ renderChat(); setTimeout(()=>testFollow(),1800); setTimeout(()=>testRaid(),6400); }
 </script>
 </body>

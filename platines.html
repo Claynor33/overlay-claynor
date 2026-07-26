@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Compteur de platines</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700&family=Rajdhani:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root{ --cyan:#2de2e6; --cyan-deep:#0fa3b1; --plat:#e8f4ff; --plat-deep:#9fb4c6; --glow:rgba(232,244,255,.5); --ink:#eaf6f7; --ink-dim:#6f858c; --line:rgba(45,226,230,.28); }
+  *{ margin:0; padding:0; box-sizing:border-box; }
+  html,body{ width:100%; height:100%; overflow:hidden; background:transparent; font-family:'Rajdhani',sans-serif; color:var(--ink); }
+
+  .box{ position:absolute; left:0; top:0; display:inline-flex; align-items:center; gap:13px; padding:11px 20px 11px 16px;
+    background:linear-gradient(105deg, rgba(12,16,20,.96), rgba(8,11,14,.92));
+    clip-path:polygon(0 0, calc(100% - 15px) 0, 100% 15px, 100% 100%, 15px 100%, 0 calc(100% - 15px)); overflow:hidden; }
+  .box::before{ content:''; position:absolute; left:0; top:0; bottom:0; width:3px; background:linear-gradient(var(--plat),var(--plat-deep)); box-shadow:0 0 12px var(--plat); }
+  .box::after{ content:''; position:absolute; inset:0; background:linear-gradient(105deg,transparent 40%,rgba(255,255,255,.16) 50%,transparent 60%); transform:translateX(-120%); animation:sweep 7s ease-in-out 2s infinite; }
+  .box.hidden{ display:none; }
+  .box.vertical{ flex-direction:column; gap:7px; padding:14px 16px; }
+
+  .ico{ width:34px; height:34px; display:inline-flex; filter:drop-shadow(0 0 9px var(--glow)); z-index:2; }
+  .ico svg{ width:100%; height:100%; }
+  .ico .lt{ fill:var(--plat); stroke:var(--plat); } .ico .dk{ fill:var(--plat-deep); }
+  .txt{ display:flex; flex-direction:column; gap:2px; z-index:2; }
+  .lbl{ font-family:'Chakra Petch'; font-weight:700; font-size:10px; letter-spacing:.3em; color:var(--ink-dim); text-transform:uppercase; white-space:nowrap; }
+  .sublbl{ font-family:'Rajdhani'; font-weight:600; font-size:11px; letter-spacing:.1em; color:var(--ink-dim); white-space:nowrap; }
+  .n{ margin-left:auto; font-family:'Chakra Petch'; font-weight:700; font-size:38px; line-height:1; color:var(--plat); text-shadow:0 0 18px var(--glow); font-variant-numeric:tabular-nums; z-index:2; }
+  .box.vertical .n{ margin-left:0; }
+  .n.bump{ animation:bump .6s cubic-bezier(.2,1.5,.3,1); }
+  .box.fete{ animation:fete 1.4s ease 2; }
+
+  #ctrl{ position:absolute; left:0; top:88px; z-index:80; display:flex; flex-direction:column; gap:8px; padding:12px 14px; background:rgba(6,11,14,.96); border:1px solid var(--line); border-radius:10px; opacity:0; pointer-events:none; transition:opacity .18s ease; }
+  #ctrl.show{ opacity:1; pointer-events:auto; }
+  #ctrl .t{ font-family:'Chakra Petch'; font-weight:700; font-size:10px; letter-spacing:.26em; color:var(--cyan); text-transform:uppercase; text-align:center; }
+  #ctrl .row{ display:flex; align-items:center; gap:7px; }
+  #ctrl button{ min-width:34px; height:32px; padding:0 11px; cursor:pointer; font-family:'Chakra Petch'; font-weight:700; font-size:14px; color:var(--ink); background:rgba(45,226,230,.10); border:1px solid var(--line); border-radius:6px; }
+  #ctrl button:hover{ background:var(--cyan); color:#04252a; }
+  #ctrl button.plat{ background:rgba(232,244,255,.14); border-color:rgba(232,244,255,.45); color:var(--plat); }
+  #ctrl button.plat:hover{ background:var(--plat); color:#12222c; }
+  #ctrl button.on{ background:var(--cyan); color:#04252a; }
+  #ctrl .v{ min-width:46px; text-align:center; font-family:'Chakra Petch'; font-weight:700; font-size:16px; color:var(--plat); }
+  #ctrl .h{ font-size:9px; color:var(--ink-dim); text-align:center; }
+
+  @keyframes bump{0%{transform:scale(1)}45%{transform:scale(1.32)}100%{transform:scale(1)}}
+  @keyframes sweep{0%{transform:translateX(-120%)}16%,100%{transform:translateX(120%)}}
+  @keyframes fete{0%,100%{box-shadow:none}50%{box-shadow:0 0 40px -6px var(--plat)}}
+  @media (prefers-reduced-motion: reduce){ .box::after,.n.bump,.box.fete{animation:none} }
+</style>
+</head>
+<body>
+  <div class="box" id="box">
+    <span class="ico"></span>
+    <div class="txt"><span class="lbl" id="lbl">Platines</span><span class="sublbl" id="sub"></span></div>
+    <span class="n" id="n">0</span>
+  </div>
+
+  <div id="ctrl">
+    <div class="t">Compteur de platines</div>
+    <div class="row"><button data-a="m">−1</button><span class="v" id="cv">0</span><button class="plat" data-a="p">+1</button><button data-a="t" id="tg">ON</button></div>
+    <div class="h">S'incrémente tout seul à chaque 100 %</div>
+  </div>
+
+<script>
+const CONFIG={
+  label:"Platines",        // ex. "Platines 2026", "Platines totales"
+  sousTitre:"",            // petite ligne dessous, ex. "objectif 12" (vide = rien)
+  depart:0,                // valeur initiale (la 1re fois seulement)
+  auto:true,               // +1 automatique quand un jeu atteint 100 %
+  vertical:false,          // true = format colonne (icône au-dessus du nombre)
+  suivrePalier:false       // true = la couleur suit le palier du jeu en cours
+};
+const K="wPlatines_v1";
+
+document.querySelector('.ico').innerHTML='<svg viewBox="0 0 24 24" fill="none"><path class="lt" d="M6 4h12v3a6 6 0 0 1-12 0V4Z"/><path class="lt" d="M18 4h3v2a3 3 0 0 1-3 3M6 4H3v2a3 3 0 0 0 3 3" stroke-width="1.6" stroke-linecap="round" fill="none"/><path class="dk" d="M10 13h4v3h-4z"/><path class="lt" d="M8 19h8v1.5H8z"/><path class="dk" d="M9.5 16.5h5V19h-5z"/><path class="lt" d="M12 8.2l.62 1.28 1.4.2-1.01 1 .24 1.4L12 11.42l-1.25.66.24-1.4-1.01-1 1.4-.2z"/></svg>';
+document.getElementById('lbl').textContent=CONFIG.label;
+document.getElementById('sub').textContent=CONFIG.sousTitre;
+if(CONFIG.vertical) document.getElementById('box').classList.add('vertical');
+
+let data=load();   // { n, actif, faits:{ "JEU":true } }
+function load(){ try{const r=localStorage.getItem(K); const d=r?JSON.parse(r):null; return d||{n:CONFIG.depart,actif:true,faits:{}};}catch(e){return {n:CONFIG.depart,actif:true,faits:{}};} }
+function save(){ try{localStorage.setItem(K,JSON.stringify(data));}catch(e){} }
+
+let last=null;
+function render(anim,fete){
+  const box=document.getElementById('box'), el=document.getElementById('n');
+  box.classList.toggle('hidden', !data.actif);
+  el.textContent=data.n;
+  document.getElementById('cv').textContent=data.n;
+  const b=document.getElementById('tg'); b.textContent=data.actif?'ON':'OFF'; b.classList.toggle('on',data.actif);
+  if(anim && last!==null && data.n!==last){ el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump'); }
+  if(fete){ box.classList.remove('fete'); void box.offsetWidth; box.classList.add('fete'); }
+  last=data.n;
+}
+function set(v,fete){ data.n=Math.max(0,v); save(); render(true,fete); }
+
+function shade(hex,amt){const n=parseInt(hex.slice(1),16);let r=(n>>16)&255,g=(n>>8)&255,b=n&255;const f=amt<0?0:255,t=Math.abs(amt);r=Math.round((f-r)*t+r);g=Math.round((f-g)*t+g);b=Math.round((f-b)*t+b);return '#'+((1<<24)+(r<<16)+(g<<8)+b).toString(16).slice(1);}
+
+/* --- couleur d'accent partagée (+ option : suivre le palier) --- */
+const SKEY='hud_shared_v1';
+function shared(){ try{const r=localStorage.getItem(SKEY);return r?JSON.parse(r):null;}catch(e){return null;} }
+(function(){ var lv=0,bc=null; try{bc=new BroadcastChannel('hud-claynor');}catch(e){}
+  function ap(s){ if(!s) return;
+    if(s.accent){ document.documentElement.style.setProperty('--cyan',s.accent); document.documentElement.style.setProperty('--cyan-deep',shade(s.accent,-0.4)); }
+    if(CONFIG.suivrePalier && s.accent){ document.documentElement.style.setProperty('--plat',s.accent); document.documentElement.style.setProperty('--plat-deep',shade(s.accent,-0.4)); document.documentElement.style.setProperty('--glow',s.accent+'80'); }
+  }
+  var s0=shared(); if(s0){ lv=s0.v||0; ap(s0); }
+  if(bc) bc.addEventListener('message',function(ev){ if(ev.data&&ev.data.kind==='state') ap(ev.data.s); });
+  setInterval(function(){ var s=shared(); if(s&&(s.v||0)>lv){ lv=s.v; ap(s); } },400);
+})();
+
+/* --- +1 automatique quand un jeu atteint 100 % (une seule fois par jeu) --- */
+let bcHud=null; try{ bcHud=new BroadcastChannel('hud-claynor'); }catch(e){}
+let lastTs=0;
+try{ const r=localStorage.getItem('hud_celebrate'); if(r) lastTs=JSON.parse(r).ts||0; }catch(e){}
+function onTrophy(p){
+  if(!CONFIG.auto||!p||!p.ts||p.ts<=lastTs) return; lastTs=p.ts;
+  if(!(p.total>0 && p.got>=p.total)) return;
+  const s=shared(), jeu=(s&&s.jeu)?s.jeu:'—';
+  if(data.faits[jeu]) return;              // déjà comptée pour ce jeu
+  data.faits[jeu]=true; set(data.n+1,true);
+}
+if(bcHud) bcHud.onmessage=e=>{ if(e.data&&e.data.kind==='trophy') onTrophy(e.data); };
+setInterval(()=>{ try{ const r=localStorage.getItem('hud_celebrate'); if(r) onTrophy(JSON.parse(r)); }catch(e){} },400);
+
+/* --- contrôle local --- */
+document.getElementById('ctrl').addEventListener('click',e=>{ const a=e.target.getAttribute('data-a'); if(!a) return;
+  if(a==='p') set(data.n+1,true);
+  if(a==='m') set(data.n-1);
+  if(a==='t'){ data.actif=!data.actif; save(); render(false); } });
+const ctrl=document.getElementById('ctrl'); let hideT;
+function wake(){ ctrl.classList.add('show'); clearTimeout(hideT); hideT=setTimeout(()=>ctrl.classList.remove('show'),3500); }
+document.addEventListener('mousemove',wake); document.addEventListener('click',wake);
+
+window.setPlatines=(v)=>set(v);
+window.addPlatine=()=>set(data.n+1,true);
+window.resetPlatines=()=>{ data={n:CONFIG.depart,actif:true,faits:{}}; save(); last=null; render(false); };
+render(false);
+</script>
+</body>
+</html>
