@@ -170,7 +170,7 @@ const CXp=CONFIG.marges.x, CYp=CONFIG.marges.y;
 document.body.classList.toggle('preview', CONFIG.apercu);
 (function place(){
   const pan=document.getElementById('panel'); pan.style.left=CXp+'px'; pan.style.top=CYp+'px';
-  const ctrl=document.getElementById('ctrl'); ctrl.style.left=CXp+'px'; ctrl.style.top=(CYp+150)+'px';
+  const ctrl=document.getElementById('ctrl'); ctrl.style.left='8px'; ctrl.style.top='8px';
 })();
 document.getElementById('lbl').textContent=CONFIG.label;
 document.querySelector('#vw .eye').innerHTML='<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 5C6.5 5 2.2 8.6 1 12c1.2 3.4 5.5 7 11 7s9.8-3.6 11-7c-1.2-3.4-5.5-7-11-7zm0 11.5A4.5 4.5 0 1 1 12 7.5a4.5 4.5 0 0 1 0 9zm0-2.2a2.3 2.3 0 1 0 0-4.6 2.3 2.3 0 0 0 0 4.6z"/></svg>';
