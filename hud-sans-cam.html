@@ -129,9 +129,9 @@ const CONFIG={
   label:"CLAYNOR",
   accent:"#2de2e6",
   twitch:"claynor",
-  refresh:60,
+  refresh:20,
 
-  marges:{ x:120, y:110 },     // espace transparent autour (pour l'animation)
+  marges:{ x:120, y:150 },     // espace transparent autour (pour l'animation)
   segments:24,                 // nombre de cellules de la barre
   infos:{ actif:true },
   platines:{ actif:true, depart:0, auto:true },
@@ -352,11 +352,11 @@ function jouer(a){
         nm=document.getElementById('flyname'), pill=document.getElementById('pl'), tico=document.querySelector('#pl .tico');
   const r=tico.getBoundingClientRect(), rs=sc.getBoundingClientRect();
   const ox=r.left-rs.left+r.width/2, oy=r.top-rs.top+r.height/2;
-  const sx=CXp+PW/2, sy=Math.max(46, CYp*0.5);
+  const sx=CXp+PW/2, sy=Math.max(40, CYp-64);
   const dx=sx-ox, dy=sy-oy, taille=3.2+n.s*0.5;
   fly.style.left=ox+'px'; fly.style.top=oy+'px';
   halo.style.left=sx+'px'; halo.style.top=sy+'px';
-  nm.style.left=sx+'px'; nm.style.top=(sy+64)+'px';
+  nm.style.left=sx+'px'; nm.style.top=(sy-58)+'px';
   document.getElementById('fk').textContent=a.titre||n.k;
   document.getElementById('fp').textContent=a.nom||'';
   pill.classList.add('vol');
