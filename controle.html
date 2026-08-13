@@ -36,11 +36,55 @@
   input:focus{ outline:none; border-color:var(--cyan); }
   #setgame{ flex:0 0 auto; padding:0 20px; }
   .note{ font-size:12px; color:var(--ink-dim); text-align:center; margin-top:16px; line-height:1.5; }
+  .vw{ display:inline-flex; align-items:center; gap:6px; margin-left:auto; font-family:'Chakra Petch'; font-weight:700; font-size:13px; letter-spacing:.08em; color:var(--ink); }
+  .vw svg{ width:15px; height:15px; color:var(--cyan); filter:drop-shadow(0 0 5px var(--cyan)); }
+  .vw b{ font-variant-numeric:tabular-nums; }
+  #chatBtn{ position:fixed; right:16px; bottom:calc(16px + env(safe-area-inset-bottom)); z-index:50; height:54px; padding:0 22px; border:none; border-radius:27px; cursor:pointer;
+    font-family:'Chakra Petch'; font-weight:700; font-size:14px; letter-spacing:.08em; text-transform:uppercase; color:#04252a;
+    background:linear-gradient(160deg,var(--cyan),var(--cyan-deep)); box-shadow:0 8px 22px -6px var(--cyan); display:flex; align-items:center; gap:9px; transition:transform .08s; }
+  #chatBtn:active{ transform:scale(.95); }
+  #chatBtn .bdg{ min-width:20px; height:20px; padding:0 5px; border-radius:10px; background:#ff5d5d; color:#fff; font-size:11px; font-family:'Rajdhani'; display:none; align-items:center; justify-content:center; }
+  #chatBtn .bdg.on{ display:inline-flex; }
+  #chatWrap{ position:fixed; inset:0; z-index:60; pointer-events:none; }
+  #chatWrap.open{ pointer-events:auto; }
+  #chatBack{ position:absolute; inset:0; background:rgba(0,0,0,.5); opacity:0; transition:opacity .25s; }
+  #chatWrap.open #chatBack{ opacity:1; }
+  #chatPanel{ position:absolute; left:50%; bottom:0; transform:translateX(-50%) translateY(100%); width:100%; max-width:460px; height:80vh;
+    background:linear-gradient(180deg,#0c141a,#080d11); border-top-left-radius:18px; border-top-right-radius:18px; border:1px solid var(--line);
+    display:flex; flex-direction:column; transition:transform .28s cubic-bezier(.2,.8,.2,1); }
+  #chatWrap.open #chatPanel{ transform:translateX(-50%) translateY(0); }
+  .chead{ display:flex; align-items:center; gap:12px; padding:15px 16px; border-bottom:1px solid var(--line); }
+  .chead .t{ font-family:'Chakra Petch'; font-weight:700; font-size:13px; letter-spacing:.22em; text-transform:uppercase; color:var(--cyan); }
+  .chead .x{ margin-left:auto; width:38px; height:38px; border:1px solid var(--line); border-radius:9px; background:rgba(255,255,255,.05); color:var(--ink); font-size:18px; cursor:pointer; }
+  #chatBody{ flex:1; overflow-y:auto; padding:12px 14px; -webkit-overflow-scrolling:touch; }
+  .cmsg{ margin-bottom:9px; font-family:'Rajdhani'; font-weight:600; font-size:16px; line-height:1.35; overflow-wrap:anywhere; }
+  .cmsg .u{ font-weight:700; }
+  .cmsg .tx{ color:var(--ink); }
+  .cempty{ color:var(--ink-dim); text-align:center; margin-top:24px; font-size:14px; }
+  #toasts{ position:fixed; top:calc(10px + env(safe-area-inset-top)); left:50%; transform:translateX(-50%); z-index:70; width:100%; max-width:440px; padding:0 12px; display:flex; flex-direction:column; gap:8px; pointer-events:none; }
+  .toast{ display:flex; align-items:center; gap:11px; padding:12px 15px; border-radius:13px; background:linear-gradient(105deg, rgba(12,19,24,.97), rgba(9,14,18,.93)); border:1px solid var(--line); box-shadow:0 10px 30px -8px rgba(0,0,0,.7); transform:translateY(-140%); opacity:0; transition:transform .3s cubic-bezier(.2,.9,.3,1), opacity .3s; }
+  .toast.show{ transform:translateY(0); opacity:1; }
+  .toast .ic{ width:34px; height:34px; flex:0 0 auto; border-radius:9px; display:flex; align-items:center; justify-content:center; font-family:'Chakra Petch'; font-weight:700; font-size:16px; }
+  .toast .tk{ font-family:'Chakra Petch'; font-weight:700; font-size:10px; letter-spacing:.2em; text-transform:uppercase; }
+  .toast .tn{ font-family:'Chakra Petch'; font-weight:700; font-size:16px; color:var(--ink); }
+  .toast .td{ font-size:12px; color:var(--ink-dim); }
+  .tabs{ display:flex; gap:6px; }
+  .tab{ padding:7px 13px; border:1px solid var(--line); border-radius:9px; cursor:pointer; font-family:'Chakra Petch'; font-weight:700; font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-dim); background:transparent; }
+  .tab.on{ background:var(--cyan); color:#04252a; border-color:var(--cyan); }
+  .pane{ flex:1; overflow-y:auto; padding:12px 14px; -webkit-overflow-scrolling:touch; }
+  .ev{ display:flex; align-items:center; gap:11px; padding:10px 0; border-bottom:1px solid rgba(255,255,255,.05); }
+  .ev .dot2{ width:10px; height:10px; border-radius:50%; flex:0 0 auto; }
+  .ev .en{ font-family:'Chakra Petch'; font-weight:700; font-size:15px; color:var(--ink); }
+  .ev .ed{ font-size:12px; color:var(--ink-dim); }
+  .ev .et{ margin-left:auto; font-size:11px; color:var(--ink-dim); font-variant-numeric:tabular-nums; white-space:nowrap; }
+
+
 </style>
 </head>
 <body>
+  <div id="toasts"></div>
   <div class="wrap">
-    <div class="top"><span class="dot" id="dot"></span><span id="status">Connexion…</span></div>
+    <div class="top"><span class="dot" id="dot"></span><span id="status">Connexion…</span><span class="vw" id="vwrap"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 5C6.5 5 2.2 8.6 1 12c1.2 3.4 5.5 7 11 7s9.8-3.6 11-7c-1.2-3.4-5.5-7-11-7zm0 11.5A4.5 4.5 0 1 1 12 7.5a4.5 4.5 0 0 1 0 9zm0-2.2a2.3 2.3 0 1 0 0-4.6 2.3 2.3 0 0 0 0 4.6z"/></svg><b id="vn">–</b></span></div>
     <div class="card">
       <div class="game" id="game">—</div>
       <div class="count"><span id="got">–</span><span class="sl">/</span><span id="tot">–</span></div>
@@ -67,6 +111,19 @@
       </div>
     </div>
     <div class="note">Garde cette page ouverte sur ton téléphone pendant le stream. Les boutons agissent en direct sur ton overlay.</div>
+  </div>
+
+  <button id="chatBtn"><svg viewBox="0 0 24 24" fill="currentColor" style="width:18px;height:18px"><path d="M4 4h16a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H9l-5 4V5a1 1 0 0 1 1-1z"/></svg> Chat <span class="bdg" id="cbdg">0</span></button>
+  <div id="chatWrap">
+    <div id="chatBack"></div>
+    <div id="chatPanel">
+      <div class="chead">
+        <div class="tabs"><button class="tab on" data-tab="chat">Chat</button><button class="tab" id="evTabBtn" data-tab="events">Événements</button></div>
+        <button class="x" id="chatClose">✕</button>
+      </div>
+      <div id="chatBody" class="pane"><div class="cempty">En attente des messages…</div></div>
+      <div id="evBody" class="pane" style="display:none"><div class="cempty">Aucun événement pour l'instant…</div></div>
+    </div>
   </div>
 
 <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
@@ -101,6 +158,127 @@ document.querySelectorAll('[data-a]').forEach(b=> b.addEventListener('click',()=
 function sendD(o){ try{ cli && cli.publish(TDA, JSON.stringify(o)); }catch(e){} }
 document.querySelectorAll('[data-d]').forEach(b=> b.addEventListener('click',()=> sendD({a:b.getAttribute('data-d')})) );
 $('setgame').addEventListener('click',()=>{ const v=$('gi').value.trim(); if(v){ send({a:'game',g:v}); $('gi').value=''; } });
+
+/* ---------- viewers en temps réel (DecAPI) ---------- */
+const TWITCH="claynor";
+async function pollV(){ try{
+  const r=await fetch('https://decapi.me/twitch/viewercount/'+TWITCH+'?_='+Date.now(),{cache:'no-store'});
+  const t=(await r.text()).trim();
+  const v = /^\d+$/.test(t) ? (+t).toLocaleString('fr-FR') : '–';
+  const a=$('vn'), b=$('vn2'); if(a) a.textContent=v; if(b) b.textContent=v;
+}catch(e){ const a=$('vn'); if(a) a.textContent='–'; } }
+pollV(); setInterval(pollV, 20000);
+
+/* ---------- chat Twitch (IRC anonyme, sans token) ---------- */
+let unread=0, chatWS=null;
+function ucolor(name){ let h=0; for(let i=0;i<name.length;i++) h=name.charCodeAt(i)+((h<<5)-h); return 'hsl('+(Math.abs(h)%360)+',62%,66%)'; }
+function parseChat(line){
+  if(line.indexOf('PRIVMSG')<0) return null;
+  let tags={};
+  if(line[0]==='@'){ const sp=line.indexOf(' '); line.substring(1,sp).split(';').forEach(kv=>{ const i=kv.indexOf('='); tags[kv.substring(0,i)]=kv.substring(i+1); }); line=line.substring(sp+1); }
+  const m=line.match(/^:([^!]+)![^ ]* PRIVMSG #[^ ]+ :([\s\S]*)$/);
+  if(!m) return null;
+  return { user:(tags['display-name']||m[1]), color:tags['color']||'', text:m[2].replace(/[\u0001]/g,'').trim() };
+}
+function addChat(msg){
+  if(!msg||!msg.text) return;
+  const body=$('chatBody'); if(!body) return;
+  const empty=body.querySelector('.cempty'); if(empty) empty.remove();
+  const near = body.scrollHeight - body.scrollTop - body.clientHeight < 90;
+  const d=document.createElement('div'); d.className='cmsg';
+  const u=document.createElement('span'); u.className='u';
+  u.style.color=(msg.color&&/^#/.test(msg.color))?msg.color:ucolor(msg.user); u.textContent=msg.user+' ';
+  const tx=document.createElement('span'); tx.className='tx'; tx.textContent=msg.text;
+  d.appendChild(u); d.appendChild(tx); body.appendChild(d);
+  while(body.children.length>250) body.removeChild(body.firstChild);
+  if(near) body.scrollTop=body.scrollHeight;
+  if(!$('chatWrap').classList.contains('open')){ unread++; const bg=$('cbdg'); if(bg){ bg.textContent=unread>99?'99+':unread; bg.classList.add('on'); } }
+}
+function connectChat(){
+  try{ chatWS=new WebSocket('wss://irc-ws.chat.twitch.tv:443'); }catch(e){ return; }
+  chatWS.onopen=()=>{ chatWS.send('CAP REQ :twitch.tv/tags twitch.tv/commands'); chatWS.send('NICK justinfan'+Math.floor(Math.random()*99999)); chatWS.send('JOIN #'+TWITCH); };
+  chatWS.onmessage=(ev)=>{ ev.data.split('\r\n').forEach(line=>{ if(!line) return; if(line.indexOf('PING')===0){ chatWS.send('PONG :tmi.twitch.tv'); return; } const m=parseChat(line); if(m) addChat(m); }); };
+  chatWS.onclose=()=>{ setTimeout(connectChat,3000); };
+  chatWS.onerror=()=>{ try{ chatWS.close(); }catch(e){} };
+}
+connectChat();
+
+/* ---------- tiroir ---------- */
+function openChat(){ $('chatWrap').classList.add('open'); unread=0; const bg=$('cbdg'); if(bg) bg.classList.remove('on'); const b=$('chatBody'); if(b) b.scrollTop=b.scrollHeight; }
+function closeChat(){ $('chatWrap').classList.remove('open'); }
+$('chatBtn').addEventListener('click',openChat);
+$('chatClose').addEventListener('click',closeChat);
+$('chatBack').addEventListener('click',closeChat);
+
+/* ---------- alertes en direct (Streamlabs) ---------- */
+const EVK={
+  follow:{c:'#2de2e6',k:'Follow'}, sub:{c:'#b9f2ff',k:'Sub'}, resub:{c:'#f5c542',k:'Resub'},
+  gift:{c:'#e8c66b',k:'Sub offert'}, don:{c:'#3df08a',k:'Don'}, raid:{c:'#ff8a3d',k:'Raid'}, bits:{c:'#a970ff',k:'Bits'}
+};
+let events=[];
+function relTime(ts){ const s=Math.max(0,Math.round((Date.now()-ts)/1000));
+  if(s<60) return 'à l\'instant'; const m=Math.round(s/60); if(m<60) return 'il y a '+m+' min'; const hh=Math.round(m/60); return 'il y a '+hh+' h'; }
+function renderEvents(){ const b=$('evBody'); if(!b) return;
+  if(!events.length){ b.innerHTML='<div class="cempty">Aucun événement pour l\'instant…</div>'; return; }
+  b.innerHTML=''; events.forEach(e=>{ const k=EVK[e.kind]||EVK.follow;
+    const row=document.createElement('div'); row.className='ev';
+    const d=document.createElement('span'); d.className='dot2'; d.style.background=k.c; d.style.boxShadow='0 0 8px '+k.c;
+    const mid=document.createElement('div'); mid.style.flex='1';
+    const nm=document.createElement('div'); nm.className='en'; nm.textContent=e.name;
+    const de=document.createElement('div'); de.className='ed'; de.textContent=e.detail;
+    mid.appendChild(nm); mid.appendChild(de);
+    const t=document.createElement('span'); t.className='et'; t.textContent=relTime(e.ts);
+    row.appendChild(d); row.appendChild(mid); row.appendChild(t); b.appendChild(row);
+  });
+}
+let toastQ=[], toastBusy=false;
+function toast(e){ toastQ.push(e); pumpToast(); }
+function pumpToast(){ if(toastBusy||!toastQ.length) return; toastBusy=true; const e=toastQ.shift(); const k=EVK[e.kind]||EVK.follow;
+  const el=document.createElement('div'); el.className='toast';
+  el.innerHTML='<div class="ic" style="background:'+k.c+'22;color:'+k.c+'">★</div><div><div class="tk" style="color:'+k.c+'">'+k.k+'</div><div class="tn">'+e.name+'</div><div class="td">'+e.detail+'</div></div>';
+  $('toasts').appendChild(el);
+  requestAnimationFrame(()=>el.classList.add('show'));
+  setTimeout(()=>{ el.classList.remove('show'); setTimeout(()=>{ el.remove(); toastBusy=false; pumpToast(); },350); }, 4600);
+}
+function addEvent(e){ e.ts=Date.now(); events.unshift(e); if(events.length>60) events.pop(); renderEvents(); toast(e);
+  const bt=$('evTabBtn'); if(bt && !$('chatWrap').classList.contains('open')){ evUnread++; } updateEvBadge(); }
+let evUnread=0;
+function updateEvBadge(){ const bt=$('evTabBtn'); if(bt) bt.textContent = evUnread>0 ? ('Événements ('+evUnread+')') : 'Événements'; }
+
+function onEvent(type,m){ const name=(m.name||m.from||m.gifter||'ANON');
+  if(type==='follow') addEvent({kind:'follow',name,detail:'Nouveau follow'});
+  else if(type==='donation'){ const a=m.formatted_amount||m.amount; addEvent({kind:'don',name,detail:'Don'+(a?(' · '+a):'')}); }
+  else if(type==='raid'||type==='host') addEvent({kind:'raid',name,detail:(type==='raid'?'Raid':'Host')+' · '+(m.raiders||m.viewers||0)+' viewers'});
+  else if(type==='bits') addEvent({kind:'bits',name,detail:(parseInt(m.amount,10)||0)+' bits'});
+  else if(type==='subscription'||type==='resub'){ const st=(m.sub_type||'').toLowerCase();
+    if(st==='subgift'||st==='anonsubgift') addEvent({kind:'gift',name:(m.gifter||name),detail:'Sub offert'});
+    else if(st==='submysterygift') addEvent({kind:'gift',name:(m.gifter||name),detail:'Subs offerts ×'+(m.amount||1)});
+    else if(st==='resub'||(m.months&&m.months>1)) addEvent({kind:'resub',name,detail:'Resub · '+(m.months||1)+' mois'});
+    else addEvent({kind:'sub',name,detail:'Nouveau sub'});
+  }
+}
+function connectStreamlabs(token){ if(!token) return; const s=document.createElement('script'); s.src='https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.0.3/socket.io.js';
+  s.onload=()=>{ try{ const sl=io('https://sockets.streamlabs.com?token='+token,{transports:['websocket']});
+    sl.on('event',ev=>{ if(!ev||!ev.type) return; const ms=Array.isArray(ev.message)?ev.message:[ev.message]; ms.forEach(m=>{ if(m) onEvent(ev.type,m); }); });
+  }catch(e){} }; document.head.appendChild(s); }
+connectStreamlabs((new URLSearchParams(location.search).get('token'))||'');
+setInterval(()=>{ if($('evBody') && $('evBody').style.display!=='none') renderEvents(); }, 30000);
+
+/* onglets du tiroir */
+document.querySelectorAll('.tab').forEach(t=> t.addEventListener('click',()=>{
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on')); t.classList.add('on');
+  const which=t.getAttribute('data-tab');
+  $('chatBody').style.display = which==='chat' ? '' : 'none';
+  $('evBody').style.display   = which==='events' ? '' : 'none';
+  if(which==='events'){ evUnread=0; updateEvBadge(); renderEvents(); }
+}));
+
+window.testFollow=(n='NEOxWOLF')=>onEvent('follow',{name:n});
+window.testSub=(n='KALYA_TV')=>onEvent('subscription',{name:n,sub_type:'sub'});
+window.testDon=(n='LUNA',a='5€')=>onEvent('donation',{name:n,formatted_amount:a});
+window.testRaid=(n='POKIMANE',c=138)=>onEvent('raid',{name:n,raiders:c});
+
+
 </script>
 </body>
 </html>
