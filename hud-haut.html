@@ -136,7 +136,7 @@
    CONFIG
    ===================================================================== */
 const CONFIG={
-  apercu:true,                 // true = fond de repère · false = OBS
+  apercu:false,                 // true = fond de repère · false = OBS
   label:"CLAYNOR",
   accent:"#2de2e6",
   twitch:"claynor",
@@ -471,7 +471,6 @@ if(document.fonts && document.fonts.ready) document.fonts.ready.then(()=>{ build
 window.addEventListener('load',()=>{ buildRing(); render(false); });
 window.addEventListener('resize',()=>{ buildRing(); render(false); });
 if(CONFIG.apercu){ setTimeout(()=>testFollow(),1300); setTimeout(()=>testSub(),8200); }
-try{ if(typeof state!=="undefined"){ state.jeu.nom="ASSASSIN'S CREED SYNDICATE"; state.trophees.obtenus=27; state.trophees.total=51; state.trophees.platine=43; if(typeof saveS==="function") saveS(); } if(typeof buildRing==="function") buildRing(); if(typeof render==="function") render(true); if(typeof psetP==="function") psetP(1); }catch(e){}
 </script>
 </body>
 </html>
