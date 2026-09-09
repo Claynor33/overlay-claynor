@@ -17,9 +17,17 @@
   #scene{ position:absolute; inset:0; perspective:1000px; }
 
   /* ---------- panneau compact ---------- */
-  #panel{ position:absolute; width:860px; padding:8px 30px 26px; display:flex; align-items:center; justify-content:space-between; gap:20px;
-    background:linear-gradient(180deg, rgba(11,17,21,.92), rgba(8,12,15,.8)); border:1px solid var(--line); border-top:none;
-    border-radius:0 0 16px 16px; box-shadow:0 8px 22px -12px rgba(0,0,0,.65); }
+  #panel{ position:absolute; width:860px; padding:9px 32px 13px; display:flex; align-items:center; justify-content:space-between; gap:20px;
+    background:linear-gradient(180deg, rgba(11,17,21,.9), rgba(8,12,15,.78)); border-radius:0 0 16px 16px; box-shadow:0 8px 22px -12px rgba(0,0,0,.65); }
+  #panel>.cluster{ position:relative; z-index:1; }
+  #ring{ position:absolute; left:0; top:0; z-index:0; overflow:visible; pointer-events:none; }
+  #ring path{ fill:none; }
+  .r-bg{ stroke:rgba(255,255,255,.14); }
+  .r-fill{ stroke:var(--gold); stroke-linecap:round; filter:drop-shadow(0 0 6px var(--glow)); transition:stroke-dashoffset 1s cubic-bezier(.2,.8,.2,1), stroke .5s ease; }
+  .r-dlc{ stroke:var(--dlc); stroke-linecap:butt; opacity:.9; }
+  .r-mk{ stroke:#e2f0ff; stroke-width:3; stroke-linecap:round; filter:drop-shadow(0 0 6px #cfe6ff); }
+  .r-mkd{ fill:#eaf6ff; filter:drop-shadow(0 0 6px #cfe6ff); }
+  .r-dlc,.r-mk,.r-mkd{ display:none; }
   .cluster{ display:flex; align-items:center; gap:9px; }
   .cluster.center{ flex:1; flex-direction:row; justify-content:center; align-items:center; gap:16px; min-width:0; }
   .sep{ width:1px; height:20px; background:var(--line); flex:0 0 auto; }
@@ -100,6 +108,7 @@
 <body class="preview">
   <div id="scene">
     <div id="panel">
+      <svg id="ring"><path class="r-bg"/><path class="r-dlc"/><path class="r-fill"/><line class="r-mk" id="rMk"/><circle class="r-mkd" id="rMkd"/></svg>
       <div class="cluster left"><span class="mini" id="pl"><span class="tico"></span><span class="num" id="pn">0</span></span></div>
       <div class="cluster center">
         <div class="jeu" id="jeu"><span>CRYSIS</span></div>
@@ -107,7 +116,6 @@
         <div class="tro"><span class="ico"></span><span class="c" id="tg">0</span><span class="s">/</span><span class="s" id="tt">41</span><span class="p" id="tp">0 %</span></div>
       </div>
       <div class="cluster right"><span class="mini" id="vw"><span class="eye"></span><span class="num" id="vn">0</span></span></div>
-      <div class="barwrap"><div class="bar" id="bar"></div><div class="mk" id="mk"></div></div>
     </div>
 
     <div id="ctrl">
@@ -128,7 +136,7 @@
    CONFIG
    ===================================================================== */
 const CONFIG={
-  apercu:false,                 // true = fond de repère · false = OBS
+  apercu:true,                 // true = fond de repère · false = OBS
   label:"CLAYNOR",
   accent:"#2de2e6",
   twitch:"claynor",
@@ -183,8 +191,21 @@ document.querySelector('#pl .tico').innerHTML=PLATINE_LOGO;
 document.querySelector('.tro .ico').innerHTML=TROPHY;
 document.getElementById('fly').innerHTML=PLATINE_SHAPE;
 document.getElementById('panel').style.display=CONFIG.infos.actif?'':'';
-/* construire les segments */
-(function(){ const bar=document.getElementById('bar'); let g=''; for(let i=0;i<CONFIG.segments;i++) g+='<span class="seg"></span>'; bar.innerHTML=g; })();
+/* contour-jauge : tracé épousant le bandeau (coins bas arrondis) */
+function buildRing(){
+  const pan=document.getElementById('panel'); if(!pan) return;
+  const W=pan.offsetWidth, H=pan.offsetHeight; if(!W||!H) return;
+  const svg=document.getElementById('ring');
+  svg.setAttribute('width',W); svg.setAttribute('height',H); svg.setAttribute('viewBox','0 0 '+W+' '+H);
+  const ep=3, x0=ep/2, y0=ep/2, w=W-ep, hh=H-ep, r=Math.min(16,hh/2,w/2);
+  const d='M '+(x0+w/2)+' '+y0+' H '+(x0+w)+' V '+(y0+hh-r)+' A '+r+' '+r+' 0 0 1 '+(x0+w-r)+' '+(y0+hh)+
+          ' H '+(x0+r)+' A '+r+' '+r+' 0 0 1 '+x0+' '+(y0+hh-r)+' V '+y0+' Z';
+  const bg=svg.querySelector('.r-bg'), fp=svg.querySelector('.r-fill'), dl=svg.querySelector('.r-dlc');
+  bg.setAttribute('d',d); bg.setAttribute('stroke-width',1.6);
+  fp.setAttribute('d',d); fp.setAttribute('stroke-width',ep);
+  dl.setAttribute('d',d); dl.setAttribute('stroke-width',ep);
+  window.__L=fp.getTotalLength(); window.__ringW=W; window.__ringH=H;
+}
 
 function shade(hex,amt){const n=parseInt(hex.slice(1),16);let r=(n>>16)&255,g=(n>>8)&255,b=n&255;const f=amt<0?0:255,t=Math.abs(amt);r=Math.round((f-r)*t+r);g=Math.round((f-g)*t+g);b=Math.round((f-b)*t+b);return '#'+((1<<24)+(r<<16)+(g<<8)+b).toString(16).slice(1);}
 function setAccent(a){ document.documentElement.style.setProperty('--cyan',a); document.documentElement.style.setProperty('--cyan-deep',shade(a,-0.4)); }
@@ -232,14 +253,24 @@ function render(anim){
   if(anim && prevGot!==null && got>prevGot){ el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop'); }
   prevGot=got;
 
-  /* barre segmentée + repère platine / DLC */
-  const N=CONFIG.segments, onN=tot?Math.round(N*got/tot):0;
-  const dlcValid = plat>0 && plat<tot;
-  const platBound = dlcValid ? Math.round(N*plat/tot) : N;
-  const segs=document.querySelectorAll('#bar .seg');
-  segs.forEach((sg,i)=>{ sg.classList.toggle('on', i<onN); sg.classList.toggle('dlc', dlcValid && i>=platBound); });
-  const mk=document.getElementById('mk');
-  if(dlcValid){ mk.style.left=(plat/tot*100)+'%'; mk.style.display='block'; } else { mk.style.display='none'; }
+  /* contour-jauge + repère platine / DLC */
+  const _pan=document.getElementById('panel');
+  if(_pan && (_pan.offsetWidth!==window.__ringW || _pan.offsetHeight!==window.__ringH)) buildRing();
+  const L=window.__L, fp=document.querySelector('.r-fill');
+  if(fp && L){
+    const frac=Math.max(0,Math.min(1, tot?got/tot:0));
+    fp.style.strokeDasharray=L; fp.style.strokeDashoffset=L*(1-frac);
+    const rdlc=document.querySelector('.r-dlc'), mk=document.getElementById('rMk'), mkd=document.getElementById('rMkd');
+    const dlcValid = plat>0 && plat<tot;
+    if(dlcValid){ const pf=plat/tot;
+      rdlc.style.strokeDasharray=((1-pf)*L)+' '+L; rdlc.style.strokeDashoffset=-pf*L; rdlc.style.display='block';
+      const pt=fp.getPointAtLength(pf*L), q1=fp.getPointAtLength(Math.max(0,pf*L-0.7)), q2=fp.getPointAtLength(Math.min(L,pf*L+0.7));
+      const ln=Math.hypot(q2.x-q1.x,q2.y-q1.y)||1, nx=(q2.y-q1.y)/ln, ny=-(q2.x-q1.x)/ln, e=4.6;
+      mk.setAttribute('x1',(pt.x-nx*e).toFixed(1)); mk.setAttribute('y1',(pt.y-ny*e).toFixed(1));
+      mk.setAttribute('x2',(pt.x+nx*e).toFixed(1)); mk.setAttribute('y2',(pt.y+ny*e).toFixed(1)); mk.style.display='block';
+      mkd.setAttribute('cx',pt.x.toFixed(1)); mkd.setAttribute('cy',pt.y.toFixed(1)); mkd.setAttribute('r',3.2); mkd.style.display='block';
+    } else { rdlc.style.display='none'; mk.style.display='none'; mkd.style.display='none'; }
+  }
 
   document.getElementById('cG').textContent=got;
   document.getElementById('cT').textContent=tot;
@@ -358,11 +389,11 @@ function jouer(a){
   const r=tico.getBoundingClientRect(), rs=sc.getBoundingClientRect();
   const pr=document.getElementById('panel').getBoundingClientRect();
   const ox=r.left-rs.left+r.width/2, oy=r.top-rs.top+r.height/2;
-  const sx=pr.left-rs.left+pr.width/2, sy=pr.top-rs.top+pr.height/2;
+  const sx=pr.left-rs.left+pr.width/2, sy=pr.bottom-rs.top+58;
   const dx=sx-ox, dy=sy-oy, taille=3.2+n.s*0.5;
   fly.style.left=ox+'px'; fly.style.top=oy+'px';
   halo.style.left=sx+'px'; halo.style.top=sy+'px';
-  nm.style.left=sx+'px'; nm.style.top=(pr.bottom-rs.top+52)+'px';
+  nm.style.left=sx+'px'; nm.style.top=(sy+58)+'px';
   document.getElementById('fk').textContent=a.titre||n.k;
   document.getElementById('fp').textContent=a.nom||'';
   pill.classList.add('vol');
@@ -435,7 +466,12 @@ window.testBits=(n='XQCOW',a=500)=>onEvent('bits',{name:n,amount:String(a)});
 /* démarrage */
 if(!readShared() && !loadS()){ state={jeu:{nom:'CRYSIS'},trophees:{obtenus:12,total:41,platine:0}}; }
 render(false); syncInputs(); publish();
+buildRing(); render(false);
+if(document.fonts && document.fonts.ready) document.fonts.ready.then(()=>{ buildRing(); render(false); });
+window.addEventListener('load',()=>{ buildRing(); render(false); });
+window.addEventListener('resize',()=>{ buildRing(); render(false); });
 if(CONFIG.apercu){ setTimeout(()=>testFollow(),1300); setTimeout(()=>testSub(),8200); }
+try{ if(typeof state!=="undefined"){ state.jeu.nom="ASSASSIN'S CREED SYNDICATE"; state.trophees.obtenus=27; state.trophees.total=51; state.trophees.platine=43; if(typeof saveS==="function") saveS(); } if(typeof buildRing==="function") buildRing(); if(typeof render==="function") render(true); if(typeof psetP==="function") psetP(1); }catch(e){}
 </script>
 </body>
 </html>
